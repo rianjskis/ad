@@ -2,37 +2,44 @@ name: Build SRS Rule-Set
 
 on:
   schedule:
-    - cron: "0 0 * * *"   # 每天 00:00 UTC 执行一次（你可以改为适合的时区 /频率）
-  workflow_dispatch:     # 手动触发也可以
+    - cron: "0 0 * * *"
+  workflow_dispatch:
 
 jobs:
   compile:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          # 如果你要提交回当前分支，需要开启 write 权限
           persist-credentials: true
           fetch-depth: 0
 
-      - name: Download latest sing-box release
-        # 这里假设 sing-box 发布的是在 GitHub Releases，你可以用 actions/download-release-artifact、或者直接从官网抓
+      - name: Download & verify sing-box
         run: |
-          # 以示例方式下载 Linux 版本，你需要根据你的目标平台调整
+          set -eux
+          sudo apt-get update
+          sudo apt-get install -y jq wget
           SB_VER=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r .tag_name)
-          wget -qO sing-box.tar.gz "https://github.com/SagerNet/sing-box/releases/download/$SB_VER/sing-box-$SB_VER-linux-amd64.tar.gz"
+          echo "Latest version: $SB_VER"
+          DOWNLOAD_URL="https://github.com/SagerNet/sing-box/releases/download/${SB_VER}/sing-box-${SB_VER}-linux-amd64.tar.gz"
+          echo "Download URL: $DOWNLOAD_URL"
+          wget -O sing-box.tar.gz "$DOWNLOAD_URL"
+          file sing-box.tar.gz
+          ls -lh sing-box.tar.gz
           tar -xzf sing-box.tar.gz
+          # 如果解压出来是一个目录 lib 或 bin，可以改路径
           chmod +x sing-box
 
       - name: Compile JSON -> SRS
         run: |
-          # 假设你的 JSON 在 Filters/
+          set -eux
           ./sing-box rule-set compile --output Filters/AWAvenue-Ads-Rule-Singbox.srs Filters/AWAvenue-Ads-Rule-Singbox.json
 
-      - name: Commit and push changes
+      - name: Commit & push if changed
         run: |
-          # 如果 .srs 有变化，则提交
+          set -eux
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add Filters/AWAvenue-Ads-Rule-Singbox.srs
@@ -41,4 +48,3 @@ jobs:
             git push
           else
             echo "No changes to SRS"
-          fi

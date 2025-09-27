@@ -33,7 +33,7 @@ jobs:
 
       - name: Convert json to srs
         run: |
-          ./sing-box rule-compile --output AWAvenue-Ads-Rule-Singbox.srs AWAvenue-Ads-Rule-Singbox.json
+          ./sing-box rule-set compile --output AWAvenue-Ads-Rule-Singbox.srs AWAvenue-Ads-Rule-Singbox.json
 
       - name: Commit and push
         run: |

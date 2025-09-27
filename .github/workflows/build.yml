@@ -2,7 +2,7 @@ name: Update SRS Rule
 
 on:
   schedule:
-    - cron: "0 0 * * *"   # 每天 0 点执行（UTC 时间，换算你自己时区）
+    - cron: "0 0 * * *"   # 每天 0 点 UTC
   workflow_dispatch:       # 允许手动触发
 
 jobs:
@@ -15,10 +15,14 @@ jobs:
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y wget jq tar
 
-      - name: Download latest sing-box
+      - name: Download latest sing-box (official release)
         run: |
-          SB_VER=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r .tag_name)
-          wget -qO sing-box.tar.gz "https://github.com/SagerNet/sing-box/releases/download/${SB_VER}/sing-box-${SB_VER}-linux-amd64.tar.gz"
+          # 获取最新正式 release 的 tag
+          SB_TAG=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r .tag_name)
+          # 去掉前缀 v，得到文件名需要的版本号
+          SB_VER=${SB_TAG#v}
+          # 下载 Linux 64 位正式版
+          wget -qO sing-box.tar.gz "https://github.com/SagerNet/sing-box/releases/download/${SB_TAG}/sing-box-${SB_VER}-linux-amd64.tar.gz"
           tar -xzf sing-box.tar.gz
           mv sing-box-${SB_VER}-linux-amd64/sing-box ./sing-box
           chmod +x ./sing-box
@@ -36,5 +40,5 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add AWAvenue-Ads-Rule-Singbox.srs
-          git commit -m "Update SRS rule $(date -u +'%Y-%m-%d %H:%M:%S')"
+          git commit -m "Update SRS rule $(date -u +'%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
           git push

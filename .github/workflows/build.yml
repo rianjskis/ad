@@ -42,7 +42,10 @@ jobs:
           git add AWAvenue-Ads-Rule-Singbox.srs
           git commit -m "Update SRS rule $(date -u +'%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
           git push
+          
       - name: 删除工作流程运行
         uses: Mattraks/delete-workflow-runs@main
         with:
+         workflow_name: "自动更新 SRS 规则"
          keep_minimum_runs: 1
+        if: ${{ success() }}

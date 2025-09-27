@@ -1,37 +1,40 @@
-name: Auto Compile SRS from JSON
+name: Update SRS Rule
 
 on:
   schedule:
-    # 每天的 0:00 UTC 执行一次（你可以调整 cron 时间）
-    - cron: '0 0 * * *'
-  workflow_dispatch:  # 允许手动触发
+    - cron: "0 0 * * *"   # 每天 0 点执行（UTC 时间，换算你自己时区）
+  workflow_dispatch:       # 允许手动触发
 
 jobs:
-  compile:
+  build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Make compile script executable
-        run: chmod +x ./compile.sh
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y wget jq tar
 
-      - name: Run compile script
-        run: ./compile.sh
-
-      - name: Commit & push compiled .srs
+      - name: Download latest sing-box
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Filters/AWAvenue-Ads-Rule-Singbox.srs
-          # 检查是否有变更
-          git diff --quiet || (git commit -m "Auto update SRS from JSON" && git push)
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SB_VER=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r .tag_name)
+          wget -qO sing-box.tar.gz "https://github.com/SagerNet/sing-box/releases/download/${SB_VER}/sing-box-${SB_VER}-linux-amd64.tar.gz"
+          tar -xzf sing-box.tar.gz
+          mv sing-box-${SB_VER}-linux-amd64/sing-box ./sing-box
+          chmod +x ./sing-box
 
-      - name: Upload artifact (optional)
-        uses: actions/upload-artifact@v4
-        with:
-          name: srs-output
-          path: Filters/AWAvenue-Ads-Rule-Singbox.srs
+      - name: Download latest rule json
+        run: |
+          wget -qO AWAvenue-Ads-Rule-Singbox.json "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/Filters/AWAvenue-Ads-Rule-Singbox.json"
+
+      - name: Convert json to srs
+        run: |
+          ./sing-box rule-compile --output AWAvenue-Ads-Rule-Singbox.srs AWAvenue-Ads-Rule-Singbox.json
+
+      - name: Commit and push
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add AWAvenue-Ads-Rule-Singbox.srs
+          git commit -m "Update SRS rule $(date -u +'%Y-%m-%d %H:%M:%S')"
+          git push

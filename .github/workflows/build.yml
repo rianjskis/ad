@@ -1,0 +1,42 @@
+name: Build SRS Rule
+
+on:
+  schedule:
+    - cron: "0 0 * * *"   # 每天 UTC 0点运行（北京时间早上8点）
+  workflow_dispatch:       # 允许手动触发
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Download rule JSON
+        run: |
+          curl -L "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/Filters/AWAvenue-Ads-Rule-Singbox.json" -o rule.json
+
+      - name: Get latest sing-box release
+        run: |
+          LATEST=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | grep browser_download_url | grep linux-amd64 | cut -d '"' -f 4)
+          echo "Download: $LATEST"
+          curl -L "$LATEST" -o sing-box.tar.gz
+          tar -xzf sing-box.tar.gz
+          chmod +x sing-box*/sing-box
+          echo "${PWD}/sing-box*/" >> $GITHUB_PATH
+
+      - name: Compile rule to .srs
+        run: |
+          mkdir -p output
+          sing-box*/sing-box rule compile -c rule.json -o output/AWAvenue-Ads-Rule.srs
+
+      - name: Commit & Push result
+        run: |
+          git config --local user.email "actions@github.com"
+          git config --local user.name "GitHub Actions"
+          cp output/AWAvenue-Ads-Rule.srs .
+          git add AWAvenue-Ads-Rule.srs
+          git commit -m "Update rule on $(date -u '+%Y-%m-%d %H:%M:%S')"
+          git push
+

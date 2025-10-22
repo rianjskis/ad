@@ -1,14 +1,12 @@
 name: Update SRS Rule
-
-on:  
-  schedule:  
+on:
+  schedule:
     - cron: "0 0 * * *"  # 每天 0 点 UTC
-  workflow_dispatch:  # 允许手动触发
+  workflow_dispatch:      # 允许手动触发
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -28,6 +26,7 @@ jobs:
           mv sing-box-${SB_VER}-linux-amd64/sing-box ./sing-box
           chmod +x ./sing-box
 
+      # === 原有规则 ===
       - name: Download latest rule json
         run: |
           wget -qO AWAvenue-Ads-Rule-Singbox.json "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/Filters/AWAvenue-Ads-Rule-Singbox.json"
@@ -36,11 +35,21 @@ jobs:
         run: |
           ./sing-box rule-set compile --output AWAvenue-Ads-Rule-Singbox.srs AWAvenue-Ads-Rule-Singbox.json
 
+      # === 新增规则 ===
+      - name: Download httpdns rule json
+        run: |
+          wget -qO httpdns.json "https://raw.githubusercontent.com/QuixoticHeart/rule-set/ruleset/singbox/version3/httpdns.json"
+
+      - name: Convert httpdns json to srs
+        run: |
+          ./sing-box rule-set compile --output httpdns.srs httpdns.json
+
+      # === 提交并推送所有变化 ===
       - name: Commit and push
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add AWAvenue-Ads-Rule-Singbox.srs
+          git add AWAvenue-Ads-Rule-Singbox.srs httpdns.srs
           git commit -m "Update SRS rule $(date -u +'%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
           git push
 

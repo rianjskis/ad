@@ -2,8 +2,8 @@ name: Update SRS Rule
 
 on:
   schedule:
-    - cron: "0 0 * * *"  # 每天 0 点 UTC
-  workflow_dispatch:      # 允许手动触发
+    - cron: "0 0 * * *"
+  workflow_dispatch:
 
 jobs:
   build:
@@ -18,17 +18,13 @@ jobs:
 
       - name: Download latest sing-box (official release)
         run: |
-          # 获取最新正式 release 的 tag
           SB_TAG=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r .tag_name)
-          # 去掉前缀 v，得到文件名需要的版本号
           SB_VER=${SB_TAG#v}
-          # 下载 Linux 64 位正式版
           wget -qO sing-box.tar.gz "https://github.com/SagerNet/sing-box/releases/download/${SB_TAG}/sing-box-${SB_VER}-linux-amd64.tar.gz"
           tar -xzf sing-box.tar.gz
           mv sing-box-${SB_VER}-linux-amd64/sing-box ./sing-box
           chmod +x ./sing-box
 
-      # === 原有规则 ===
       - name: Download latest rule json
         run: |
           wget -qO AWAvenue-Ads-Rule-Singbox.json "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/Filters/AWAvenue-Ads-Rule-Singbox.json"
@@ -42,16 +38,30 @@ jobs:
         run: |
           wget -qO httpdns.json "https://raw.githubusercontent.com/QuixoticHeart/rule-set/ruleset/singbox/version3/httpdns.json"
 
-      # === 拆分为域名与IP规则 ===
+      # === 拆分为域名与IP规则（修正版） ===
       - name: Split httpdns.json into domain and ip rules
         run: |
-          # 提取域名规则
-          jq 'walk(if type == "object" and has("rule") then .rule |= map(select(has("domain") or has("domain_suffix") or has("domain_keyword") or has("domain_regex"))) else . end)' httpdns.json > httpdns-domain.json
+          jq '{
+            version: .version,
+            rules: [
+              .rules[]
+              | select(has("domain") or has("domain_suffix") or has("domain_keyword") or has("domain_regex"))
+            ]
+          }' httpdns.json > httpdns-domain.json
 
-          # 提取IP规则
-          jq 'walk(if type == "object" and has("rule") then .rule |= map(select(has("ip_cidr") or has("ip_is_private"))) else . end)' httpdns.json > httpdns-ip.json
+          jq '{
+            version: .version,
+            rules: [
+              .rules[]
+              | select(has("ip_cidr") or has("ip_is_private"))
+            ]
+          }' httpdns.json > httpdns-ip.json
 
-      # === 分别编译为 srs 文件 ===
+          echo "== Domain rule count =="
+          jq '.rules | length' httpdns-domain.json
+          echo "== IP rule count =="
+          jq '.rules | length' httpdns-ip.json
+
       - name: Convert httpdns domain rules to srs
         run: |
           ./sing-box rule-set compile --output httpdns-domain.srs httpdns-domain.json
@@ -60,7 +70,6 @@ jobs:
         run: |
           ./sing-box rule-set compile --output httpdns-ip.srs httpdns-ip.json
 
-      # === 提交并推送所有变化 ===
       - name: Commit and push
         run: |
           git config --global user.name "github-actions[bot]"

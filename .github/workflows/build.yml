@@ -18,11 +18,8 @@ jobs:
 
       - name: Download latest sing-box (official release)
         run: |
-          # 获取最新正式 release 的 tag
           SB_TAG=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r .tag_name)
-          # 去掉前缀 v，得到文件名需要的版本号
           SB_VER=${SB_TAG#v}
-          # 下载 Linux 64 位正式版
           wget -qO sing-box.tar.gz "https://github.com/SagerNet/sing-box/releases/download/${SB_TAG}/sing-box-${SB_VER}-linux-amd64.tar.gz"
           tar -xzf sing-box.tar.gz
           mv sing-box-${SB_VER}-linux-amd64/sing-box ./sing-box
@@ -44,18 +41,14 @@ jobs:
 
       - name: Split httpdns rule into domain and ip
         run: |
-          cat > split_rules.py <<'PY'
+python3 - <<'EOF'
 import json, sys
 from pathlib import Path
 from copy import deepcopy
 
-if len(sys.argv) != 4:
-    print("Usage: split_rules.py IN_JSON OUT_DOMAIN_JSON OUT_IP_JSON", file=sys.stderr)
-    sys.exit(2)
-
-infile = Path(sys.argv[1])
-out_domain = Path(sys.argv[2])
-out_ip = Path(sys.argv[3])
+infile = Path("httpdns.json")
+out_domain = Path("httpdns-domain.json")
+out_ip = Path("httpdns-ip.json")
 
 data = json.loads(infile.read_text(encoding='utf-8'))
 rules_key = "rules" if "rules" in data else ("rule" if "rule" in data else None)
@@ -108,8 +101,7 @@ out_ip.write_text(json.dumps(out_ip_data, ensure_ascii=False, indent=2), encodin
 print(f"拆分完成 ✅")
 print(f"域名规则数量: {len(domain_rules)}")
 print(f"IP 规则数量: {len(ip_rules)}")
-PY
-          python3 split_rules.py httpdns.json httpdns-domain.json httpdns-ip.json
+EOF
 
       - name: Compile domain and IP SRS files
         run: |

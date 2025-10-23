@@ -1,4 +1,5 @@
 name: Update SRS Rule
+
 on:
   schedule:
     - cron: "0 0 * * *"  # 每天 0 点 UTC
@@ -7,6 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -40,16 +42,30 @@ jobs:
         run: |
           wget -qO httpdns.json "https://raw.githubusercontent.com/QuixoticHeart/rule-set/ruleset/singbox/version3/httpdns.json"
 
-      - name: Convert httpdns json to srs
+      # === 拆分为域名与IP规则 ===
+      - name: Split httpdns.json into domain and ip rules
         run: |
-          ./sing-box rule-set compile --output httpdns.srs httpdns.json
+          # 提取域名规则
+          jq 'walk(if type == "object" and has("rule") then .rule |= map(select(has("domain") or has("domain_suffix") or has("domain_keyword") or has("domain_regex"))) else . end)' httpdns.json > httpdns-domain.json
+
+          # 提取IP规则
+          jq 'walk(if type == "object" and has("rule") then .rule |= map(select(has("ip_cidr") or has("ip_is_private"))) else . end)' httpdns.json > httpdns-ip.json
+
+      # === 分别编译为 srs 文件 ===
+      - name: Convert httpdns domain rules to srs
+        run: |
+          ./sing-box rule-set compile --output httpdns-domain.srs httpdns-domain.json
+
+      - name: Convert httpdns ip rules to srs
+        run: |
+          ./sing-box rule-set compile --output httpdns-ip.srs httpdns-ip.json
 
       # === 提交并推送所有变化 ===
       - name: Commit and push
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add AWAvenue-Ads-Rule-Singbox.srs httpdns.srs
+          git add AWAvenue-Ads-Rule-Singbox.srs httpdns-domain.srs httpdns-ip.srs
           git commit -m "Update SRS rule $(date -u +'%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
           git push
 

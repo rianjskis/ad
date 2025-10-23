@@ -1,86 +1,59 @@
 name: Update SRS Rule
 
 on:
-  schedule:
-    - cron: "0 0 * * *"
-  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *"  # 每天 0 点 UTC
+  workflow_dispatch:      # 允许手动触发
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y wget jq tar
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y wget jq tar
 
-      - name: Download latest sing-box (official release)
-        run: |
-          SB_TAG=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r .tag_name)
-          SB_VER=${SB_TAG#v}
-          wget -qO sing-box.tar.gz "https://github.com/SagerNet/sing-box/releases/download/${SB_TAG}/sing-box-${SB_VER}-linux-amd64.tar.gz"
-          tar -xzf sing-box.tar.gz
-          mv sing-box-${SB_VER}-linux-amd64/sing-box ./sing-box
-          chmod +x ./sing-box
+      - name: Download latest sing-box (official release)
+        run: |
+          # 获取最新正式 release 的 tag
+          SB_TAG=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r .tag_name)
+          # 去掉前缀 v，得到文件名需要的版本号
+          SB_VER=${SB_TAG#v}
+          # 下载 Linux 64 位正式版
+          wget -qO sing-box.tar.gz "https://github.com/SagerNet/sing-box/releases/download/${SB_TAG}/sing-box-${SB_VER}-linux-amd64.tar.gz"
+          tar -xzf sing-box.tar.gz
+          mv sing-box-${SB_VER}-linux-amd64/sing-box ./sing-box
+          chmod +x ./sing-box
 
-      - name: Download latest rule json
-        run: |
-          wget -qO AWAvenue-Ads-Rule-Singbox.json "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/Filters/AWAvenue-Ads-Rule-Singbox.json"
+      # === 原有规则 ===
+      - name: Download latest rule json
+        run: |
+          wget -qO AWAvenue-Ads-Rule-Singbox.json "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/Filters/AWAvenue-Ads-Rule-Singbox.json"
 
-      - name: Convert json to srs
-        run: |
-          ./sing-box rule-set compile --output AWAvenue-Ads-Rule-Singbox.srs AWAvenue-Ads-Rule-Singbox.json
+      - name: Convert json to srs
+        run: |
+          ./sing-box rule-set compile --output AWAvenue-Ads-Rule-Singbox.srs AWAvenue-Ads-Rule-Singbox.json
 
-      # === 新增规则 ===
-      - name: Download httpdns rule json
-        run: |
-          wget -qO httpdns.json "https://raw.githubusercontent.com/QuixoticHeart/rule-set/ruleset/singbox/version3/httpdns.json"
+      # === 新增规则 ===
+      - name: Download httpdns rule json
+        run: |
+          wget -qO httpdns.json "https://raw.githubusercontent.com/QuixoticHeart/rule-set/ruleset/singbox/version3/httpdns.json"
 
-      # === 拆分为域名与IP规则（修正版） ===
-      - name: Split httpdns.json into domain and ip rules
-        run: |
-          jq '{
-            version: .version,
-            rules: [
-              .rules[]
-              | select(has("domain") or has("domain_suffix") or has("domain_keyword") or has("domain_regex"))
-            ]
-          }' httpdns.json > httpdns-domain.json
+      # === 提交并推送所有变化 ===
+      - name: Commit and push
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add AWAvenue-Ads-Rule-Singbox.srs httpdns-domain.srs httpdns-ip.srs
+          git commit -m "Update SRS rule $(date -u +'%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
+          git push
 
-          jq '{
-            version: .version,
-            rules: [
-              .rules[]
-              | select(has("ip_cidr") or has("ip_is_private"))
-            ]
-          }' httpdns.json > httpdns-ip.json
-
-          echo "== Domain rule count =="
-          jq '.rules | length' httpdns-domain.json
-          echo "== IP rule count =="
-          jq '.rules | length' httpdns-ip.json
-
-      - name: Convert httpdns domain rules to srs
-        run: |
-          ./sing-box rule-set compile --output httpdns-domain.srs httpdns-domain.json
-
-      - name: Convert httpdns ip rules to srs
-        run: |
-          ./sing-box rule-set compile --output httpdns-ip.srs httpdns-ip.json
-
-      - name: Commit and push
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add AWAvenue-Ads-Rule-Singbox.srs httpdns-domain.srs httpdns-ip.srs
-          git commit -m "Update SRS rule $(date -u +'%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
-          git push
-
-      - name: 删除工作流程运行
-        uses: Mattraks/delete-workflow-runs@main
-        with:
-          token: ${{ github.token }}
-          retain_days: 5
-          keep_minimum_runs: 5
+      - name: 删除工作流程运行
+        uses: Mattraks/delete-workflow-runs@main
+        with:
+          token: ${{ github.token }}
+          retain_days: 5
+          keep_minimum_runs: 5

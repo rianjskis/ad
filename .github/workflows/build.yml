@@ -20,7 +20,9 @@ jobs:
         run: |
           # 获取最新正式 release 的 tag
           SB_TAG=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r .tag_name)
+          # 去掉前缀 v，得到文件名需要的版本号
           SB_VER=${SB_TAG#v}
+          # 下载 Linux 64 位正式版
           wget -qO sing-box.tar.gz "https://github.com/SagerNet/sing-box/releases/download/${SB_TAG}/sing-box-${SB_VER}-linux-amd64.tar.gz"
           tar -xzf sing-box.tar.gz
           mv sing-box-${SB_VER}-linux-amd64/sing-box ./sing-box
@@ -40,86 +42,79 @@ jobs:
         run: |
           wget -qO httpdns.json "https://raw.githubusercontent.com/QuixoticHeart/rule-set/ruleset/singbox/version3/httpdns.json"
 
-      # === 使用 Python 拆分为域名与 IP 规则 ===
-      - name: Split httpdns.json into domain and ip rules (Python)
+      - name: Split httpdns rule into domain and ip
         run: |
           cat > split_rules.py <<'PY'
-          import json, sys
-          from pathlib import Path
+import json, sys
+from pathlib import Path
+from copy import deepcopy
 
-          if len(sys.argv) != 4:
-              print("Usage: split_rules.py IN_JSON OUT_DOMAIN_JSON OUT_IP_JSON", file=sys.stderr)
-              sys.exit(2)
+if len(sys.argv) != 4:
+    print("Usage: split_rules.py IN_JSON OUT_DOMAIN_JSON OUT_IP_JSON", file=sys.stderr)
+    sys.exit(2)
 
-          infile = Path(sys.argv[1])
-          out_domain = Path(sys.argv[2])
-          out_ip = Path(sys.argv[3])
+infile = Path(sys.argv[1])
+out_domain = Path(sys.argv[2])
+out_ip = Path(sys.argv[3])
 
-          data = json.loads(infile.read_text(encoding='utf-8'))
-          rules_key = "rules" if "rules" in data else ("rule" if "rule" in data else None)
+data = json.loads(infile.read_text(encoding='utf-8'))
+rules_key = "rules" if "rules" in data else ("rule" if "rule" in data else None)
 
-          if rules_key:
-              rules = data[rules_key]
-              top = {k: v for k, v in data.items() if k != rules_key}
-          elif isinstance(data, list):
-              rules = data
-              top = {}
-          else:
-              rules = [data]
-              top = {}
+if rules_key:
+    rules = data[rules_key]
+    top = {k: v for k, v in data.items() if k != rules_key}
+elif isinstance(data, list):
+    rules = data
+    top = {}
+else:
+    rules = [data]
+    top = {}
 
-          domain_rules = []
-          ip_rules = []
+domain_fields = {"domain", "domain_suffix", "domain_keyword", "domain_regex", "domain_prefix"}
+ip_fields = {"ip_cidr", "ip_is_private", "ip_range"}
 
-          domain_fields = {"domain", "domain_suffix", "domain_keyword", "domain_regex", "domain_prefix"}
-          ip_fields = {"ip_cidr", "ip_is_private", "ip_range"}
+domain_rules = []
+ip_rules = []
 
-          for r in rules:
-              has_domain = any(f in r for f in domain_fields)
-              has_ip = any(f in r for f in ip_fields)
-              if not has_domain and not has_ip:
-                  text = json.dumps(r)
-                  if '"ip_cidr"' in text or '"ip_is_private"' in text:
-                      has_ip = True
-                  if '"domain"' in text or '"domain_suffix"' in text or '"domain_keyword"' in text or '"domain_regex"' in text:
-                      has_domain = True
+for rule in rules:
+    dom_part = {k: deepcopy(v) for k, v in rule.items() if k in domain_fields}
+    ip_part = {k: deepcopy(v) for k, v in rule.items() if k in ip_fields}
+    other_part = {k: deepcopy(v) for k, v in rule.items() if k not in domain_fields | ip_fields}
 
-              if has_domain:
-                  domain_rules.append(r)
-              if has_ip:
-                  ip_rules.append(r)
+    if dom_part:
+        dom_rule = deepcopy(other_part)
+        dom_rule.update(dom_part)
+        domain_rules.append(dom_rule)
 
-          def build_out(top, rules_key_name, rules_list):
-              if rules_key_name:
-                  out = dict(top)
-                  out[rules_key_name] = rules_list
-                  return out
-              else:
-                  return rules_list
+    if ip_part:
+        ip_rule = deepcopy(other_part)
+        ip_rule.update(ip_part)
+        ip_rules.append(ip_rule)
 
-          out_domain = build_out(top, rules_key, domain_rules)
-          out_ip = build_out(top, rules_key, ip_rules)
+def build_out(top, rules_key_name, rules_list):
+    if rules_key_name:
+        out = dict(top)
+        out[rules_key_name] = rules_list
+        return out
+    else:
+        return rules_list
 
-          Path(sys.argv[2]).write_text(json.dumps(out_domain, ensure_ascii=False, indent=2), encoding='utf-8')
-          Path(sys.argv[3]).write_text(json.dumps(out_ip, ensure_ascii=False, indent=2), encoding='utf-8')
+out_domain_data = build_out(top, rules_key, domain_rules)
+out_ip_data = build_out(top, rules_key, ip_rules)
 
-          print(f"Domain rules: {len(domain_rules)}")
-          print(f"IP rules: {len(ip_rules)}")
-          PY
+out_domain.write_text(json.dumps(out_domain_data, ensure_ascii=False, indent=2), encoding='utf-8')
+out_ip.write_text(json.dumps(out_ip_data, ensure_ascii=False, indent=2), encoding='utf-8')
+
+print(f"拆分完成 ✅")
+print(f"域名规则数量: {len(domain_rules)}")
+print(f"IP 规则数量: {len(ip_rules)}")
+PY
 
           python3 split_rules.py httpdns.json httpdns-domain.json httpdns-ip.json
-          echo "== Domain rules count =="
-          jq '.rules | length' httpdns-domain.json 2>/dev/null || jq 'length' httpdns-domain.json
-          echo "== IP rules count =="
-          jq '.rules | length' httpdns-ip.json 2>/dev/null || jq 'length' httpdns-ip.json
 
-      # === 分别编译为 srs 文件 ===
-      - name: Convert httpdns domain rules to srs
+      - name: Compile domain and IP SRS files
         run: |
           ./sing-box rule-set compile --output httpdns-domain.srs httpdns-domain.json
-
-      - name: Convert httpdns ip rules to srs
-        run: |
           ./sing-box rule-set compile --output httpdns-ip.srs httpdns-ip.json
 
       # === 提交并推送所有变化 ===

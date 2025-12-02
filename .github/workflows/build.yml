@@ -16,11 +16,14 @@ jobs:
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y wget jq tar
 
-      # ===== 固定 sing-box 版本为 1.10.7 =====
-      - name: Download fixed sing-box 1.10.7 (official release)
+      - name: Download latest sing-box (official release)
         run: |
-          SB_VER="1.10.7"
-          wget -qO sing-box.tar.gz "https://github.com/SagerNet/sing-box/releases/download/v${SB_VER}/sing-box-${SB_VER}-linux-amd64.tar.gz"
+          # 获取最新正式 release 的 tag          
+          SB_TAG=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r .tag_name)          
+          # 去掉前缀 v，得到文件名需要的版本号          
+          SB_VER=${SB_TAG#v}          
+          # 下载 Linux 64 位正式版          
+          wget -qO sing-box.tar.gz "https://github.com/SagerNet/sing-box/releases/download/${SB_TAG}/sing-box-${SB_VER}-linux-amd64.tar.gz"
           tar -xzf sing-box.tar.gz
           mv sing-box-${SB_VER}-linux-amd64/sing-box ./sing-box
           chmod +x ./sing-box

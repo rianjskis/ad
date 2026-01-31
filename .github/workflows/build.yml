@@ -2,8 +2,8 @@ name: Update SRS Rule
 
 on:
   schedule:
-    - cron: "0 0 * * *" # 每天 0 点 UTC
-  workflow_dispatch:   # 允许手动触发
+    - cron: "0 0 * * *"  # 每天 0 点 UTC
+  workflow_dispatch:      # 允许手动触发
 
 jobs:
   build:
@@ -18,11 +18,11 @@ jobs:
 
       - name: Download latest sing-box (official release)
         run: |
-          # 获取最新正式 release 的 tag
-          SB_TAG=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r .tag_name)
-          # 去掉前缀 v，得到文件名需要的版本号
-          SB_VER=${SB_TAG#v}
-          # 下载 Linux 64 位正式版
+          # 获取最新正式 release 的 tag          
+          SB_TAG=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r .tag_name)          
+          # 去掉前缀 v，得到文件名需要的版本号          
+          SB_VER=${SB_TAG#v}          
+          # 下载 Linux 64 位正式版          
           wget -qO sing-box.tar.gz "https://github.com/SagerNet/sing-box/releases/download/${SB_TAG}/sing-box-${SB_VER}-linux-amd64.tar.gz"
           tar -xzf sing-box.tar.gz
           mv sing-box-${SB_VER}-linux-amd64/sing-box ./sing-box
@@ -31,26 +31,20 @@ jobs:
       # === 原有规则 ===
       - name: Download latest rule json
         run: |
-          wget -qO AWAvenue-Ads-Rule-Singbox.json \
-          "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/Filters/AWAvenue-Ads-Rule-Singbox.json"
+          wget -qO AWAvenue-Ads-Rule-Singbox.json "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/Filters/AWAvenue-Ads-Rule-Singbox.json"
 
       - name: Convert json to srs
         run: |
-          ./sing-box rule-set compile \
-          --output AWAvenue-Ads-Rule-Singbox.srs \
-          AWAvenue-Ads-Rule-Singbox.json
+          ./sing-box rule-set compile --output AWAvenue-Ads-Rule-Singbox.srs AWAvenue-Ads-Rule-Singbox.json
 
       # === 新增规则 ===
       - name: Download httpdns rule json
         run: |
-          wget -qO httpdns.json \
-          "https://raw.githubusercontent.com/QuixoticHeart/rule-set/ruleset/singbox/version3/httpdns.json"
+          wget -qO httpdns.json "https://raw.githubusercontent.com/QuixoticHeart/rule-set/ruleset/singbox/version3/httpdns.json"
 
       - name: Convert httpdns json to srs
         run: |
-          ./sing-box rule-set compile \
-          --output httpdns.srs \
-          httpdns.json
+          ./sing-box rule-set compile --output httpdns.srs httpdns.json
 
       # === 提交并推送所有变化 ===
       - name: Commit and push

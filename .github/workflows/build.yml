@@ -31,7 +31,7 @@ jobs:
       # === 原有规则 ===
       - name: Download latest rule json
         run: |
-          wget -qO AWAvenue-Ads-Rule-Singbox.json "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/Filters/AWAvenue-Ads-Rule-Singbox.json"
+          wget -qO AWAvenue-Ads-Rule-Singbox.json "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/blob/main/Filters/AWAvenue-Ads-Rule-Singbox.json"
 
       - name: Convert json to srs
         run: |

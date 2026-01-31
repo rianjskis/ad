@@ -3,7 +3,7 @@ name: Update AWAvenue SRS
 on:
   schedule:
     - cron: "0 0 * * *"   # 每天 UTC 0 点
-  workflow_dispatch:     # 允许手动触发
+  workflow_dispatch:
 
 jobs:
   build:
@@ -26,10 +26,11 @@ jobs:
           mv sing-box-${SB_VER}-linux-amd64/sing-box ./sing-box
           chmod +x ./sing-box
 
-      - name: Download AWAvenue rule json
+      - name: Download AWAvenue rule json (RAW)
         run: |
           wget -qO AWAvenue-Ads-Rule-Singbox.json \
-          "https://github.com/TG-Twilight/AWAvenue-Ads-Rule/raw/refs/heads/main/Filters/AWAvenue-Ads-Rule-Singbox.json"
+          https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/Filters/AWAvenue-Ads-Rule-Singbox.json
+          jq empty AWAvenue-Ads-Rule-Singbox.json
 
       - name: Convert json to srs (overwrite old)
         run: |

@@ -60,7 +60,9 @@ jobs:
           wget -qO cn.txt \
             "https://github.com/Loyalsoldier/geoip/raw/release/text/cn.txt"
 
-          sed 's/$/,/' cn.txt > cnip.nft
+          echo "elements = {" > cnip.nft
+          sed 's/$/,/' cn.txt >> cnip.nft
+          echo "}" >> cnip.nft
 
       # === 提交更新 ===
       - name: Commit and push

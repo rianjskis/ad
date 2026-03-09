@@ -1,5 +1,4 @@
 name: Update SRS Rule
-
 on:
   schedule:
     - cron: "0 0 * * *"
@@ -8,7 +7,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -52,24 +50,40 @@ jobs:
             --output httpdns.srs \
             httpdns.json
 
-      # 生成 CNIP
-      - name: Generate cnip v4/v6 txt
+      # 生成 CNIP nftables set
+      - name: Generate cnip v4/v6 nft
         run: |
           wget -qO cnip.txt \
             "https://github.com/Loyalsoldier/geoip/raw/release/text/cn.txt"
-
+          
           # IPv4
           grep -E '^[0-9]+\.' cnip.txt > cnip_v4.txt
+          echo "set cnip_v4 {" > cnip_v4.nft
+          echo "    type ipv4_addr" >> cnip_v4.nft
+          echo "    flags interval" >> cnip_v4.nft
+          echo "    auto-merge" >> cnip_v4.nft
+          echo "    elements = {" >> cnip_v4.nft
+          awk '{print "        "$0","}' cnip_v4.txt >> cnip_v4.nft
+          echo "    }" >> cnip_v4.nft
+          echo "}" >> cnip_v4.nft
 
           # IPv6
           grep ':' cnip.txt > cnip_v6.txt
+          echo "set cnip_v6 {" > cnip_v6.nft
+          echo "    type ipv6_addr" >> cnip_v6.nft
+          echo "    flags interval" >> cnip_v6.nft
+          echo "    auto-merge" >> cnip_v6.nft
+          echo "    elements = {" >> cnip_v6.nft
+          awk '{print "        "$0","}' cnip_v6.txt >> cnip_v6.nft
+          echo "    }" >> cnip_v6.nft
+          echo "}" >> cnip_v6.nft
 
       # 提交更新
       - name: Commit and push
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add AWAvenue-Ads-Rule-Singbox.srs httpdns.srs cnip_v4.txt cnip_v6.txt
+          git add AWAvenue-Ads-Rule-Singbox.srs httpdns.srs cnip_v4.nft cnip_v6.nft
           git commit -m "Update rules $(date -u +'%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
           git push
 

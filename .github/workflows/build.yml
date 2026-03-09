@@ -2,7 +2,7 @@ name: Update SRS Rule
 
 on:
   schedule:
-    - cron: "0 0 * * *" # 每天 0 点 UTC
+    - cron: "0 0 * * *"
   workflow_dispatch:
 
 jobs:
@@ -28,7 +28,7 @@ jobs:
           mv sing-box-${SB_VER}-linux-amd64/sing-box ./sing-box
           chmod +x ./sing-box
 
-      # === 原有规则 ===
+      # 原有规则
       - name: Download latest rule json
         run: |
           wget -qO AWAvenue-Ads-Rule-Singbox.json \
@@ -40,7 +40,7 @@ jobs:
             --output AWAvenue-Ads-Rule-Singbox.srs \
             AWAvenue-Ads-Rule-Singbox.json
 
-      # === httpdns 规则 ===
+      # httpdns 规则
       - name: Download httpdns rule json
         run: |
           wget -qO httpdns.json \
@@ -52,19 +52,19 @@ jobs:
             --output httpdns.srs \
             httpdns.json
 
-      # === 生成中国 IP v4 / v6 列表 ===
+      # 生成 CNIP
       - name: Generate cnip v4/v6 txt
         run: |
           wget -qO cnip.txt \
             "https://github.com/Loyalsoldier/geoip/raw/release/text/cn.txt"
 
           # IPv4
-          grep -E '^[0-9]+\.' cnip.txt | sed 's/$/,/' > cnip_v4.txt
+          grep -E '^[0-9]+\.' cnip.txt | sed 's/^/"/; s/$/",/' > cnip_v4.txt
 
           # IPv6
-          grep ':' cnip.txt | sed 's/$/,/' > cnip_v6.txt
+          grep ':' cnip.txt | sed 's/^/"/; s/$/",/' > cnip_v6.txt
 
-      # === 提交更新 ===
+      # 提交更新
       - name: Commit and push
         run: |
           git config --global user.name "github-actions[bot]"

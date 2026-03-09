@@ -59,10 +59,10 @@ jobs:
             "https://github.com/Loyalsoldier/geoip/raw/release/text/cn.txt"
 
           # IPv4
-          grep -E '^[0-9]+\.' cnip.txt | sed 's/^/"/; s/$/",/' > cnip_v4.txt
+          grep -E '^[0-9]+\.' cnip.txt > cnip_v4.txt
 
           # IPv6
-          grep ':' cnip.txt | sed 's/^/"/; s/$/",/' > cnip_v6.txt
+          grep ':' cnip.txt > cnip_v6.txt
 
       # 提交更新
       - name: Commit and push

@@ -1,79 +1,80 @@
 name: Update SRS Rule
+
 on:
-schedule:
-- cron: "0 0 * * *" # 每天 0 点 UTC
-workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *" # 每天 0 点 UTC
+  workflow_dispatch:
+
 jobs:
-build:
-runs-on: ubuntu-latest
-steps:
-  - name: Checkout repo
-    uses: actions/checkout@v4
+  build:
+    runs-on: ubuntu-latest
 
-  - name: Install dependencies
-    run: sudo apt-get update && sudo apt-get install -y wget jq tar
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-  - name: Download sing-box v1.12.17 (official release)
-    run: |
-      SB_TAG=v1.12.17
-      SB_VER=1.12.17
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget jq tar
 
-      wget -qO sing-box.tar.gz \
-        "https://github.com/SagerNet/sing-box/releases/download/${SB_TAG}/sing-box-${SB_VER}-linux-amd64.tar.gz"
+      - name: Download sing-box v1.12.17 (official release)
+        run: |
+          SB_TAG=v1.12.17
+          SB_VER=1.12.17
 
-      tar -xzf sing-box.tar.gz
-      mv sing-box-${SB_VER}-linux-amd64/sing-box ./sing-box
-      chmod +x ./sing-box
+          wget -qO sing-box.tar.gz \
+            "https://github.com/SagerNet/sing-box/releases/download/${SB_TAG}/sing-box-${SB_VER}-linux-amd64.tar.gz"
 
-  # === 原有规则 ===
-  - name: Download latest rule json
-    run: |
-      wget -qO AWAvenue-Ads-Rule-Singbox.json \
-        "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/Filters/AWAvenue-Ads-Rule-Singbox.json"
+          tar -xzf sing-box.tar.gz
+          mv sing-box-${SB_VER}-linux-amd64/sing-box ./sing-box
+          chmod +x ./sing-box
 
-  - name: Convert json to srs
-    run: |
-      ./sing-box rule-set compile \
-        --output AWAvenue-Ads-Rule-Singbox.srs \
-        AWAvenue-Ads-Rule-Singbox.json
+      # === 原有规则 ===
+      - name: Download latest rule json
+        run: |
+          wget -qO AWAvenue-Ads-Rule-Singbox.json \
+            "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/Filters/AWAvenue-Ads-Rule-Singbox.json"
 
-  # === 新增规则 ===
-  - name: Download httpdns rule json
-    run: |
-      wget -qO httpdns.json \
-        "https://raw.githubusercontent.com/QuixoticHeart/rule-set/ruleset/singbox/version3/httpdns.json"
+      - name: Convert json to srs
+        run: |
+          ./sing-box rule-set compile \
+            --output AWAvenue-Ads-Rule-Singbox.srs \
+            AWAvenue-Ads-Rule-Singbox.json
 
-  - name: Convert httpdns json to srs
-    run: |
-      ./sing-box rule-set compile \
-        --output httpdns.srs \
-        httpdns.json
+      # === httpdns 规则 ===
+      - name: Download httpdns rule json
+        run: |
+          wget -qO httpdns.json \
+            "https://raw.githubusercontent.com/QuixoticHeart/rule-set/ruleset/singbox/version3/httpdns.json"
 
-  # === 新增：生成中国IP nft set ===
-  - name: Generate cnip.nft from cn.txt
-    run: |
-      wget -qO cn.txt \
-        "https://github.com/Loyalsoldier/geoip/raw/release/text/cn.txt"
+      - name: Convert httpdns json to srs
+        run: |
+          ./sing-box rule-set compile \
+            --output httpdns.srs \
+            httpdns.json
 
-      echo "elements = {" > cnip.nft
-      sed 's/$/,/' cn.txt >> cnip.nft
-      echo "}" >> cnip.nft
+      # === 生成中国 IP nft set ===
+      - name: Generate cnip.nft
+        run: |
+          wget -qO cn.txt \
+            "https://github.com/Loyalsoldier/geoip/raw/release/text/cn.txt"
 
-  # === 提交并推送所有变化 ===
-  - name: Commit and push
-    run: |
-      git config --global user.name "github-actions[bot]"
-      git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          sed 's/$/,/' cn.txt > cnip.nft
 
-      git add AWAvenue-Ads-Rule-Singbox.srs httpdns.srs cnip.nft
+      # === 提交更新 ===
+      - name: Commit and push
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-      git commit -m "Update rules $(date -u +'%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
+          git add AWAvenue-Ads-Rule-Singbox.srs httpdns.srs cnip.nft
+          git commit -m "Update rules $(date -u +'%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
+          git push
 
-      git push
-
-  - name: 删除工作流程运行
-    uses: Mattraks/delete-workflow-runs@main
-    with:
-      token: ${{ github.token }}
-      retain_days: 5
-      keep_minimum_runs: 5
+      - name: 删除工作流程运行
+        uses: Mattraks/delete-workflow-runs@main
+        with:
+          token: ${{ github.token }}
+          retain_days: 5
+          keep_minimum_runs: 5

@@ -22,10 +22,8 @@ jobs:
         run: |
           SB_TAG=v1.12.17
           SB_VER=1.12.17
-
           wget -qO sing-box.tar.gz \
             "https://github.com/SagerNet/sing-box/releases/download/${SB_TAG}/sing-box-${SB_VER}-linux-amd64.tar.gz"
-
           tar -xzf sing-box.tar.gz
           mv sing-box-${SB_VER}-linux-amd64/sing-box ./sing-box
           chmod +x ./sing-box
@@ -54,23 +52,24 @@ jobs:
             --output httpdns.srs \
             httpdns.json
 
-      # === 生成中国 IP nft set ===
-      - name: Generate cnip.nft
+      # === 生成中国 IP v4 / v6 列表 ===
+      - name: Generate cnip v4/v6 txt
         run: |
-          wget -qO cn.txt \
+          wget -qO cnip.txt \
             "https://github.com/Loyalsoldier/geoip/raw/release/text/cn.txt"
 
-          echo "elements = {" > cnip.nft
-          sed 's/$/,/' cn.txt >> cnip.nft
-          echo "}" >> cnip.nft
+          # IPv4
+          grep -E '^[0-9]+\.' cnip.txt | sed 's/$/,/' > cnip_v4.txt
+
+          # IPv6
+          grep ':' cnip.txt | sed 's/$/,/' > cnip_v6.txt
 
       # === 提交更新 ===
       - name: Commit and push
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-          git add AWAvenue-Ads-Rule-Singbox.srs httpdns.srs cnip.nft
+          git add AWAvenue-Ads-Rule-Singbox.srs httpdns.srs cnip_v4.txt cnip_v6.txt
           git commit -m "Update rules $(date -u +'%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
           git push
 

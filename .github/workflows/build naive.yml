@@ -1,0 +1,117 @@
+name: build naive
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Setup Go
+        uses: actions/setup-go@main
+        with:
+          go-version: '1.25.5'
+          cache: false
+
+      - name: Clone sing-box
+        run: |
+          git clone -b stable --depth=1 https://github.com/SagerNet/sing-box.git
+
+      - name: Clone cronet-go
+        run: |
+          git clone --recursive --depth=1 https://github.com/SagerNet/cronet-go.git
+
+      - name: Prepare cronet-go toolchain (linux arm64 musl)
+        run: |
+          set -euo pipefail
+          cd cronet-go
+
+          go run ./cmd/build-naive \
+            --target=linux/arm64 \
+            --libc=musl \
+            download-toolchain
+
+          go run ./cmd/build-naive \
+            --target=linux/arm64 \
+            --libc=musl \
+            env >> "$GITHUB_ENV"
+
+      - name: Build sing-box (linux arm64 musl naive)
+        run: |
+          set -euo pipefail
+          cd sing-box
+
+          export CGO_ENABLED=1
+          export GOOS=linux
+          export GOARCH=arm64
+
+          TAGS="with_quic with_dhcp with_utls with_acme with_clash_api with_gvisor with_naive_outbound with_musl badlinkname tfogo_checklinkname0"
+
+          go build -v -trimpath \
+            -tags "$TAGS" \
+            -ldflags "-checklinkname=0 -X 'internal/godebug.defaultGODEBUG=multipathtcp=0' -s -w -buildid=" \
+            -o sing-box-linux-arm64-musl \
+            ./cmd/sing-box
+
+      - name: Build sing-box (windows amd64 purego naive)
+        run: |
+          set -euo pipefail
+          cd sing-box
+
+          export CGO_ENABLED=0
+          export GOOS=windows
+          export GOARCH=amd64
+
+          TAGS="with_quic with_dhcp with_utls with_acme with_clash_api with_gvisor with_naive_outbound with_purego badlinkname tfogo_checklinkname0"
+
+          go build -v -trimpath \
+            -tags "$TAGS" \
+            -ldflags "-checklinkname=0 -X 'internal/godebug.defaultGODEBUG=multipathtcp=0' -s -w -buildid=" \
+            -o sing-box-windows-amd64.exe \
+            ./cmd/sing-box
+
+      - name: Setup NDK
+        uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r29
+          add-to-path: false
+          local-cache: false
+
+      - name: Build sing-box (android arm64 naive)
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+        run: |
+          cd sing-box
+
+          CC=${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android35-clang
+
+          export CGO_ENABLED=1
+          export GOOS=android
+          export GOARCH=arm64
+          export CC=${CC}
+
+          TAGS="with_quic with_dhcp with_utls with_acme with_clash_api with_gvisor with_naive_outbound badlinkname tfogo_checklinkname0"
+
+          go build -v -trimpath \
+            -tags "$TAGS" \
+            -ldflags "-checklinkname=0 -X 'internal/godebug.defaultGODEBUG=multipathtcp=0' -s -w -buildid=" \
+            -o sing-box-androidarm64 \
+            ./cmd/sing-box
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sing-box-naive
+          path: |
+            sing-box/sing-box-androidarm64
+            sing-box/sing-box-linux-arm64-musl
+            sing-box/sing-box-windows-amd64.exe
+
+      - name: 删除工作流程运行
+        uses: Mattraks/delete-workflow-runs@main
+        with:
+          token: ${{ github.token }}
+          retain_days: 1
+          keep_minimum_runs: 2

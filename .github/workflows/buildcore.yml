@@ -1,0 +1,95 @@
+name: build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Setup Go
+        uses: actions/setup-go@main
+        with:
+          go-version: '1.25.5'
+          cache: false
+
+      - name: Git clone
+        run: |
+          git clone --depth 1 -b stable --single-branch https://github.com/SagerNet/sing-box.git
+
+      - name: Setup NDK
+        uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r29
+          add-to-path: false
+          local-cache: false
+
+      - name: Build sing-box (linux arm64)
+        env:
+          TAGS: with_quic with_dhcp with_utls with_acme with_clash_api with_gvisor badlinkname tfogo_checklinkname0
+        run: |
+          cd sing-box
+          export CGO_ENABLED=0
+          export GOOS=linux
+          export GOARCH=arm64
+
+          go build -v -trimpath \
+            -tags "$TAGS" \
+            -ldflags "-checklinkname=0 -X 'internal/godebug.defaultGODEBUG=multipathtcp=0' -s -w -buildid=" \
+            -o sing-boxlinuxarm64 \
+            ./cmd/sing-box
+
+      - name: Build sing-box (windows amd64)
+        env:
+          TAGS: with_quic with_dhcp with_utls with_acme with_clash_api with_gvisor badlinkname tfogo_checklinkname0
+        run: |
+          cd sing-box
+          export CGO_ENABLED=0
+          export GOOS=windows
+          export GOARCH=amd64
+          export GOAMD64=v3
+
+          go build -v -trimpath \
+            -tags "$TAGS" \
+            -ldflags "-checklinkname=0 -X 'internal/godebug.defaultGODEBUG=multipathtcp=0' -s -w -buildid=" \
+            -o sing-box.exe \
+            ./cmd/sing-box
+
+      - name: Build sing-box (android arm64)
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+          TAGS: with_quic with_dhcp with_utls with_acme with_clash_api with_gvisor badlinkname tfogo_checklinkname0
+        run: |
+          cd sing-box
+
+          CC=${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android35-clang
+
+          export CGO_ENABLED=1
+          export GOOS=android
+          export GOARCH=arm64
+          export CC=${CC}
+
+          go build -v -trimpath \
+            -tags "$TAGS" \
+            -ldflags "-checklinkname=0 -X 'internal/godebug.defaultGODEBUG=multipathtcp=0' -s -w -buildid=" \
+            -o sing-boxandroidarm64 \
+            ./cmd/sing-box
+
+      - name: Upload files
+        uses: actions/upload-artifact@main
+        with:
+          name: sing-box
+          path: |
+            sing-box/sing-boxandroidarm64
+            sing-box/sing-boxlinuxarm64
+            sing-box/sing-box.exe
+
+      - name: 删除工作流程运行
+        uses: Mattraks/delete-workflow-runs@main
+        with:
+          token: ${{ github.token }}
+          retain_days: 1
+          keep_minimum_runs: 2

@@ -1,4 +1,5 @@
 name: Update SRS Rule
+
 on:
   schedule:
     - cron: "0 0 * * *"
@@ -7,6 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -14,14 +16,21 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y wget jq tar
+          sudo apt-get install -y wget jq tar curl
 
-      - name: Download sing-box v1.12.17 (official release)
+      - name: Download sing-box (latest stable)
         run: |
-          SB_TAG=v1.12.17
-          SB_VER=1.12.17
+          # 获取最新 release tag（如 v1.13.0）
+          SB_TAG=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | grep '"tag_name"' | cut -d '"' -f 4)
+
+          # 去掉 v 前缀（如 1.13.0）
+          SB_VER=${SB_TAG#v}
+
+          echo "Latest version: $SB_TAG"
+
           wget -qO sing-box.tar.gz \
             "https://github.com/SagerNet/sing-box/releases/download/${SB_TAG}/sing-box-${SB_VER}-linux-amd64.tar.gz"
+
           tar -xzf sing-box.tar.gz
           mv sing-box-${SB_VER}-linux-amd64/sing-box ./sing-box
           chmod +x ./sing-box
@@ -55,7 +64,7 @@ jobs:
         run: |
           wget -qO cnip.txt \
             "https://github.com/Loyalsoldier/geoip/raw/release/text/cn.txt"
-          
+
           # IPv4
           grep -E '^[0-9]+\.' cnip.txt > cnip_v4.txt
           echo "set cnip_v4 {" > cnip_v4.nft

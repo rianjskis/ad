@@ -3,7 +3,7 @@ name: Build AdGuard RuleSet
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 3 * * *"  # 每天自动更新（UTC时间）
+    - cron: "0 3 * * *"
 
 jobs:
   build:
@@ -13,42 +13,64 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # ✅ 安装 sing-box（已修复 404 问题，动态获取）
       - name: Install sing-box
         run: |
-          wget -O sing-box.tar.gz https://github.com/SagerNet/sing-box/releases/latest/download/sing-box-linux-amd64.tar.gz
-          tar -xzf sing-box.tar.gz
-          sudo mv sing-box-*/sing-box /usr/local/bin/
+          URL=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest \
+            | grep browser_download_url \
+            | grep linux-amd64 \
+            | grep -v '\.tar' \
+            | head -n 1 \
+            | cut -d '"' -f 4)
 
+          echo "Download URL: $URL"
+
+          wget -O sing-box "$URL"
+          chmod +x sing-box
+          sudo mv sing-box /usr/local/bin/
+
+      # ✅ 验证安装
+      - name: Verify sing-box
+        run: sing-box version
+
+      # 下载规则
       - name: Download AdGuard filters
         run: |
           curl -L -o adg1.txt https://raw.githubusercontent.com/AdguardTeam/FiltersRegistry/master/filters/filter_224_Chinese/filter.txt
           curl -L -o adg2.txt https://raw.githubusercontent.com/AdguardTeam/FiltersRegistry/master/filters/filter_15_DnsFilter/filter.txt
 
+      # 合并 + 清洗
       - name: Merge & Clean
         run: |
           cat adg1.txt adg2.txt > merged.txt
-
-          # 去掉注释和空行
           grep -vE '^!|^\[|^$' merged.txt > cleaned.txt
 
+      # 去重
       - name: Deduplicate
         run: |
           sort cleaned.txt | uniq > dedup.txt
 
-      - name: Convert to sing-box rule-set source
+      # ✅（增强）过滤无效规则（非常重要）
+      - name: Filter valid rules
         run: |
-          # sing-box 支持 adguard 直接转换
+          grep -E '^\|\||^@@\|\||^[a-zA-Z0-9]' dedup.txt > final.txt
+
+      # 转换
+      - name: Convert to sing-box rule-set
+        run: |
           sing-box rule-set convert \
             --type adguard \
             --output adblock.json \
-            dedup.txt
+            final.txt
 
+      # 编译
       - name: Compile to .srs
         run: |
           sing-box rule-set compile \
             adblock.json \
             -o adblock.srs
 
+      # 上传产物
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:

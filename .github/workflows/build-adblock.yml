@@ -1,0 +1,56 @@
+name: Build AdGuard RuleSet
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * *"  # 每天自动更新（UTC时间）
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install sing-box
+        run: |
+          wget -O sing-box.tar.gz https://github.com/SagerNet/sing-box/releases/latest/download/sing-box-linux-amd64.tar.gz
+          tar -xzf sing-box.tar.gz
+          sudo mv sing-box-*/sing-box /usr/local/bin/
+
+      - name: Download AdGuard filters
+        run: |
+          curl -L -o adg1.txt https://raw.githubusercontent.com/AdguardTeam/FiltersRegistry/master/filters/filter_224_Chinese/filter.txt
+          curl -L -o adg2.txt https://raw.githubusercontent.com/AdguardTeam/FiltersRegistry/master/filters/filter_15_DnsFilter/filter.txt
+
+      - name: Merge & Clean
+        run: |
+          cat adg1.txt adg2.txt > merged.txt
+
+          # 去掉注释和空行
+          grep -vE '^!|^\[|^$' merged.txt > cleaned.txt
+
+      - name: Deduplicate
+        run: |
+          sort cleaned.txt | uniq > dedup.txt
+
+      - name: Convert to sing-box rule-set source
+        run: |
+          # sing-box 支持 adguard 直接转换
+          sing-box rule-set convert \
+            --type adguard \
+            --output adblock.json \
+            dedup.txt
+
+      - name: Compile to .srs
+        run: |
+          sing-box rule-set compile \
+            adblock.json \
+            -o adblock.srs
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: adblock-srs
+          path: adblock.srs

@@ -71,11 +71,10 @@ jobs:
             | sort -u > adg_merged.txt
 
       - name: Convert merged AdGuard to srs
-        run: |
-          ./sing-box rule-set compile \
-            --type adguard \
-            --output adg_merged.srs \
-            adg_merged.txt
+  run: |
+    ./sing-box rule-set compile \
+      -o adg_merged.srs \
+      adg_merged.txt
 
       # 生成 CNIP nftables set
       - name: Generate cnip v4/v6 nft

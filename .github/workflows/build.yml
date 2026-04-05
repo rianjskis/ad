@@ -20,17 +20,11 @@ jobs:
 
       - name: Download sing-box (latest stable)
         run: |
-          # 获取最新 release tag（如 v1.13.0）
           SB_TAG=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | grep '"tag_name"' | cut -d '"' -f 4)
-
-          # 去掉 v 前缀（如 1.13.0）
           SB_VER=${SB_TAG#v}
-
           echo "Latest version: $SB_TAG"
-
           wget -qO sing-box.tar.gz \
             "https://github.com/SagerNet/sing-box/releases/download/${SB_TAG}/sing-box-${SB_VER}-linux-amd64.tar.gz"
-
           tar -xzf sing-box.tar.gz
           mv sing-box-${SB_VER}-linux-amd64/sing-box ./sing-box
           chmod +x ./sing-box
@@ -58,6 +52,30 @@ jobs:
           ./sing-box rule-set compile \
             --output httpdns.srs \
             httpdns.json
+
+      # ✅ AdGuard 规则（合并 + 去重 + 编译）
+      - name: Download AdGuard filters
+        run: |
+          wget -qO adg_chinese.txt \
+            "https://raw.githubusercontent.com/AdguardTeam/FiltersRegistry/master/filters/filter_224_Chinese/filter.txt"
+          wget -qO adg_dns.txt \
+            "https://raw.githubusercontent.com/AdguardTeam/FiltersRegistry/master/filters/filter_15_DnsFilter/filter.txt"
+
+      - name: Merge and deduplicate AdGuard rules
+        run: |
+          cat adg_chinese.txt adg_dns.txt \
+            | sed '/^\s*$/d' \
+            | sed '/^!/d' \
+            | grep -v '##' \
+            | grep -v '#@#' \
+            | sort -u > adg_merged.txt
+
+      - name: Convert merged AdGuard to srs
+        run: |
+          ./sing-box rule-set compile \
+            --type adguard \
+            --output adg_merged.srs \
+            adg_merged.txt
 
       # 生成 CNIP nftables set
       - name: Generate cnip v4/v6 nft
@@ -92,7 +110,12 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add AWAvenue-Ads-Rule-Singbox.srs httpdns.srs cnip_v4.nft cnip_v6.nft
+          git add \
+            AWAvenue-Ads-Rule-Singbox.srs \
+            httpdns.srs \
+            adg_merged.srs \
+            cnip_v4.nft \
+            cnip_v6.nft
           git commit -m "Update rules $(date -u +'%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
           git push
 

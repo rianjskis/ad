@@ -20,10 +20,7 @@ jobs:
 
       - name: Download sing-box (latest stable)
         run: |
-          # 获取最新 release tag（如 v1.13.0）
           SB_TAG=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | grep '"tag_name"' | cut -d '"' -f 4)
-
-          # 去掉 v 前缀（如 1.13.0）
           SB_VER=${SB_TAG#v}
 
           echo "Latest version: $SB_TAG"
@@ -62,8 +59,10 @@ jobs:
       # 生成 CNIP nftables set
       - name: Generate cnip v4/v6 nft
         run: |
-          wget -qO cnip.txt \
-            "https://github.com/Loyalsoldier/geoip/raw/release/text/cn.txt"
+          wget -qO cn.json \
+            "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/cn.json"
+
+          jq -r '.cidr[]' cn.json > cnip.txt
 
           # IPv4
           grep -E '^[0-9]+\.' cnip.txt > cnip_v4.txt

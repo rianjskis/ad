@@ -1,5 +1,4 @@
 name: Update SRS Rule
-
 on:
   schedule:
     - cron: "0 0 * * *"
@@ -22,12 +21,9 @@ jobs:
         run: |
           SB_TAG=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | grep '"tag_name"' | cut -d '"' -f 4)
           SB_VER=${SB_TAG#v}
-
           echo "Latest version: $SB_TAG"
-
           wget -qO sing-box.tar.gz \
             "https://github.com/SagerNet/sing-box/releases/download/${SB_TAG}/sing-box-${SB_VER}-linux-amd64.tar.gz"
-
           tar -xzf sing-box.tar.gz
           mv sing-box-${SB_VER}-linux-amd64/sing-box ./sing-box
           chmod +x ./sing-box
@@ -56,16 +52,17 @@ jobs:
             --output httpdns.srs \
             httpdns.json
 
-      # ✅ 新增：生成 CNIP nftables set（已修复 JSON 解析）
+      # ✅ 已替换：直接使用 v4 / v6 列表
       - name: Generate cnip v4/v6 nft
         run: |
-          wget -qO cn.json \
-            "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/cn.json"
+          # 下载 IPv4 / IPv6
+          wget -qO cnip_v4.txt \
+            "https://raw.githubusercontent.com/DH-Teams/DH-Geo_AS_IP_CN/main/Geo_AS_IP_CN.txt"
 
-          jq -r '.rules[].ip_cidr[]' cn.json > cnip.txt
+          wget -qO cnip_v6.txt \
+            "https://raw.githubusercontent.com/DH-Teams/DH-Geo_AS_IP_CN/main/Geo_AS_IP_CN_6.txt"
 
           # IPv4
-          grep -E '^[0-9]+\.' cnip.txt > cnip_v4.txt
           echo "set cnip_v4 {" > cnip_v4.nft
           echo "    type ipv4_addr" >> cnip_v4.nft
           echo "    flags interval" >> cnip_v4.nft
@@ -76,7 +73,6 @@ jobs:
           echo "}" >> cnip_v4.nft
 
           # IPv6
-          grep ':' cnip.txt > cnip_v6.txt
           echo "set cnip_v6 {" > cnip_v6.nft
           echo "    type ipv6_addr" >> cnip_v6.nft
           echo "    flags interval" >> cnip_v6.nft

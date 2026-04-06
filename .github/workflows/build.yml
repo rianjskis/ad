@@ -56,13 +56,13 @@ jobs:
             --output httpdns.srs \
             httpdns.json
 
-      # 生成 CNIP nftables set
+      # ✅ 新增：生成 CNIP nftables set（已修复 JSON 解析）
       - name: Generate cnip v4/v6 nft
         run: |
           wget -qO cn.json \
             "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/cn.json"
 
-          jq -r '.cidr[]' cn.json > cnip.txt
+          jq -r '.rules[].ip_cidr[]' cn.json > cnip.txt
 
           # IPv4
           grep -E '^[0-9]+\.' cnip.txt > cnip_v4.txt

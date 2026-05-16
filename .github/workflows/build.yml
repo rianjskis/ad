@@ -1,4 +1,5 @@
 name: Update SRS Rule
+
 on:
   schedule:
     - cron: "0 0 * * *"
@@ -21,11 +22,16 @@ jobs:
         run: |
           SB_TAG=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | grep '"tag_name"' | cut -d '"' -f 4)
           SB_VER=${SB_TAG#v}
+
           echo "Latest version: $SB_TAG"
+
           wget -qO sing-box.tar.gz \
             "https://github.com/SagerNet/sing-box/releases/download/${SB_TAG}/sing-box-${SB_VER}-linux-amd64.tar.gz"
+
           tar -xzf sing-box.tar.gz
+
           mv sing-box-${SB_VER}-linux-amd64/sing-box ./sing-box
+
           chmod +x ./sing-box
 
       # 原有规则
@@ -44,15 +50,47 @@ jobs:
       - name: Download httpdns rule json
         run: |
           wget -qO httpdns.json \
-            "https://raw.githubusercontent.com/QuixoticHeart/rule-set/ruleset/singbox/version3/httpdns.json"
+            "https://raw.githubusercontent.com/QuixoticHeart/rule-set/ruleset/singbox/version2/httpdns.json"
 
-      - name: Convert httpdns json to srs
+      # 拆分 domain/domain_suffix 与 ip_cidr
+      - name: Split httpdns rule json
+        run: |
+          # domain + domain_suffix
+          jq '{
+            version,
+            rules: [
+              .rules[] | {
+                domain,
+                domain_suffix
+              } | with_entries(select(.value != null and .value != []))
+            ]
+          }' httpdns.json > httpdns_domain.json
+
+          # ip_cidr
+          jq '{
+            version,
+            rules: [
+              .rules[] | {
+                ip_cidr
+              } | select(.ip_cidr != null and .ip_cidr != [])
+            ]
+          }' httpdns.json > httpdns_ip.json
+
+      # 编译 domain/domain_suffix
+      - name: Convert httpdns domain json to srs
         run: |
           ./sing-box rule-set compile \
-            --output httpdns.srs \
-            httpdns.json
+            --output httpdns_domain.srs \
+            httpdns_domain.json
 
-      # ✅ 已替换：直接使用 v4 / v6 列表
+      # 编译 ip_cidr
+      - name: Convert httpdns ip json to srs
+        run: |
+          ./sing-box rule-set compile \
+            --output httpdns_ip.srs \
+            httpdns_ip.json
+
+      # 生成 cnip v4/v6 nft
       - name: Generate cnip v4/v6 nft
         run: |
           # 下载 IPv4 / IPv6
@@ -68,7 +106,9 @@ jobs:
           echo "    flags interval" >> cnip_v4.nft
           echo "    auto-merge" >> cnip_v4.nft
           echo "    elements = {" >> cnip_v4.nft
+
           awk '{print "        "$0","}' cnip_v4.txt >> cnip_v4.nft
+
           echo "    }" >> cnip_v4.nft
           echo "}" >> cnip_v4.nft
 
@@ -78,7 +118,9 @@ jobs:
           echo "    flags interval" >> cnip_v6.nft
           echo "    auto-merge" >> cnip_v6.nft
           echo "    elements = {" >> cnip_v6.nft
+
           awk '{print "        "$0","}' cnip_v6.txt >> cnip_v6.nft
+
           echo "    }" >> cnip_v6.nft
           echo "}" >> cnip_v6.nft
 
@@ -87,8 +129,16 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add AWAvenue-Ads-Rule-Singbox.srs httpdns.srs cnip_v4.nft cnip_v6.nft
+
+          git add \
+            AWAvenue-Ads-Rule-Singbox.srs \
+            httpdns_domain.srs \
+            httpdns_ip.srs \
+            cnip_v4.nft \
+            cnip_v6.nft
+
           git commit -m "Update rules $(date -u +'%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
+
           git push
 
       - name: 删除工作流程运行

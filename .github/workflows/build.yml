@@ -52,21 +52,9 @@ jobs:
           wget -qO httpdns.json \
             "https://raw.githubusercontent.com/QuixoticHeart/rule-set/ruleset/singbox/version2/httpdns.json"
 
-      # 拆分 domain/domain_suffix 与 ip_cidr
-      - name: Split httpdns rule json
+      # 仅提取 ip_cidr
+      - name: Extract httpdns ip_cidr
         run: |
-          # domain + domain_suffix
-          jq '{
-            version,
-            rules: [
-              .rules[] | {
-                domain,
-                domain_suffix
-              } | with_entries(select(.value != null and .value != []))
-            ]
-          }' httpdns.json > httpdns_domain.json
-
-          # ip_cidr
           jq '{
             version,
             rules: [
@@ -75,13 +63,6 @@ jobs:
               } | select(.ip_cidr != null and .ip_cidr != [])
             ]
           }' httpdns.json > httpdns_ip.json
-
-      # 编译 domain/domain_suffix
-      - name: Convert httpdns domain json to srs
-        run: |
-          ./sing-box rule-set compile \
-            --output httpdns_domain.srs \
-            httpdns_domain.json
 
       # 编译 ip_cidr
       - name: Convert httpdns ip json to srs
@@ -132,7 +113,6 @@ jobs:
 
           git add \
             AWAvenue-Ads-Rule-Singbox.srs \
-            httpdns_domain.srs \
             httpdns_ip.srs \
             cnip_v4.nft \
             cnip_v6.nft

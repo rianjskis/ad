@@ -46,25 +46,21 @@ jobs:
             --output AWAvenue-Ads-Rule-Singbox.srs \
             AWAvenue-Ads-Rule-Singbox.json
 
-      # httpdns 规则
-      - name: Download httpdns rule json
+      # httpdns ip_cidr 规则
+      - name: Download and extract httpdns ip_cidr
         run: |
           wget -qO httpdns.json \
             "https://raw.githubusercontent.com/QuixoticHeart/rule-set/ruleset/singbox/version2/httpdns.json"
 
-      # 仅提取 ip_cidr
-      - name: Extract httpdns ip_cidr
-        run: |
           jq '{
             version,
             rules: [
-              .rules[] | {
-                ip_cidr
-              } | select(.ip_cidr != null and .ip_cidr != [])
+              .rules[]
+              | select(.ip_cidr != null and .ip_cidr != [])
+              | { ip_cidr }
             ]
           }' httpdns.json > httpdns_ip.json
 
-      # 编译 ip_cidr
       - name: Convert httpdns ip json to srs
         run: |
           ./sing-box rule-set compile \

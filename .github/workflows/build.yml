@@ -34,7 +34,7 @@ jobs:
 
           chmod +x ./sing-box
 
-      # 原有规则
+      # 原有广告规则
       - name: Download latest rule json
         run: |
           wget -qO AWAvenue-Ads-Rule-Singbox.json \
@@ -46,25 +46,97 @@ jobs:
             --output AWAvenue-Ads-Rule-Singbox.srs \
             AWAvenue-Ads-Rule-Singbox.json
 
-      # httpdns ip_cidr 规则
-      - name: Download and extract httpdns ip_cidr
+      # HTTPDNS 规则
+      - name: Download HTTPDNS yaml
         run: |
-          wget -qO httpdns.json \
-            "https://raw.githubusercontent.com/QuixoticHeart/rule-set/ruleset/singbox/version2/httpdns.json"
+          wget -qO HTTPDNS.Block.yaml \
+            "https://raw.githubusercontent.com/VirgilClyne/GetSomeFries/main/ruleset/HTTPDNS.Block.yaml"
 
-          jq '{
-            version,
-            rules: [
-              .rules[]
-              | select(.ip_cidr != null and .ip_cidr != [])
-              | { ip_cidr }
-            ]
-          }' httpdns.json > httpdns_ip.json
+      - name: Generate httpdns domain/ip json
+        run: |
+          # DOMAIN / DOMAIN-SUFFIX / DOMAIN-KEYWORD
+          grep -E '^- (DOMAIN|DOMAIN-SUFFIX|DOMAIN-KEYWORD),' HTTPDNS.Block.yaml > domain.txt
 
-      - name: Convert httpdns ip json to srs
+          # IP-CIDR / IP-CIDR6
+          grep -E '^- (IP-CIDR|IP-CIDR6),' HTTPDNS.Block.yaml > ip.txt
+
+          # 生成 domain json
+          {
+            echo '{'
+            echo '  "version": 1,'
+            echo '  "rules": ['
+
+            awk -F',' '
+            BEGIN { first=1 }
+
+            {
+              gsub(/^- /, "", $1)
+
+              type=$1
+              value=$2
+
+              if (!first) {
+                printf(",\n")
+              }
+
+              if (type=="DOMAIN") {
+                printf("    {\"domain\": [\"%s\"]}", value)
+              }
+              else if (type=="DOMAIN-SUFFIX") {
+                printf("    {\"domain_suffix\": [\"%s\"]}", value)
+              }
+              else if (type=="DOMAIN-KEYWORD") {
+                printf("    {\"domain_keyword\": [\"%s\"]}", value)
+              }
+
+              first=0
+            }
+            ' domain.txt
+
+            echo
+            echo '  ]'
+            echo '}'
+          } > httpdns_domain.json
+
+          # 生成 ip json
+          {
+            echo '{'
+            echo '  "version": 1,'
+            echo '  "rules": ['
+
+            awk -F',' '
+            BEGIN { first=1 }
+
+            {
+              gsub(/^- /, "", $1)
+
+              value=$2
+
+              if (!first) {
+                printf(",\n")
+              }
+
+              printf("    {\"ip_cidr\": [\"%s\"]}", value)
+
+              first=0
+            }
+            ' ip.txt
+
+            echo
+            echo '  ]'
+            echo '}'
+          } > httpdns_ip.json
+
+      - name: Compile httpdns domain rules
         run: |
           ./sing-box rule-set compile \
-            --output httpdns_ip.srs \
+            --output httpdns-domain.srs \
+            httpdns_domain.json
+
+      - name: Compile httpdns ip rules
+        run: |
+          ./sing-box rule-set compile \
+            --output httpdns-ip.srs \
             httpdns_ip.json
 
       # 生成 cnip v4/v6 nft
@@ -109,7 +181,8 @@ jobs:
 
           git add \
             AWAvenue-Ads-Rule-Singbox.srs \
-            httpdns_ip.srs \
+            httpdns-domain.srs \
+            httpdns-ip.srs \
             cnip_v4.nft \
             cnip_v6.nft
 

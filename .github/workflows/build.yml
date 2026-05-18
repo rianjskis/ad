@@ -46,92 +46,53 @@ jobs:
             --output AWAvenue-Ads-Rule-Singbox.srs \
             AWAvenue-Ads-Rule-Singbox.json
 
-      # HTTPDNS 规则
+      # HTTPDNS IP 规则
       - name: Download HTTPDNS yaml
         run: |
           wget -qO HTTPDNS.Block.yaml \
             "https://raw.githubusercontent.com/VirgilClyne/GetSomeFries/main/ruleset/HTTPDNS.Block.yaml"
 
-      - name: Generate httpdns domain/ip json
+      - name: Generate aggregated httpdns ip json
         run: |
-          # DOMAIN / DOMAIN-SUFFIX / DOMAIN-KEYWORD
-          grep -E '^- (DOMAIN|DOMAIN-SUFFIX|DOMAIN-KEYWORD),' HTTPDNS.Block.yaml > domain.txt
+          # 提取 IP-CIDR / IP-CIDR6
+          grep -E '^- (IP-CIDR|IP-CIDR6),' HTTPDNS.Block.yaml \
+            | awk -F',' '{print $2}' \
+            | sort -u > ip.txt
 
-          # IP-CIDR / IP-CIDR6
-          grep -E '^- (IP-CIDR|IP-CIDR6),' HTTPDNS.Block.yaml > ip.txt
-
-          # 生成 domain json
+          # 生成聚合 sing-box json
           {
             echo '{'
-            echo '  "version": 1,'
+            echo '  "version": 2,'
             echo '  "rules": ['
+            echo '    {'
+            echo '      "ip_cidr": ['
 
-            awk -F',' '
+            awk '
             BEGIN { first=1 }
 
             {
-              gsub(/^- /, "", $1)
-
-              type=$1
-              value=$2
-
               if (!first) {
                 printf(",\n")
               }
 
-              if (type=="DOMAIN") {
-                printf("    {\"domain\": [\"%s\"]}", value)
-              }
-              else if (type=="DOMAIN-SUFFIX") {
-                printf("    {\"domain_suffix\": [\"%s\"]}", value)
-              }
-              else if (type=="DOMAIN-KEYWORD") {
-                printf("    {\"domain_keyword\": [\"%s\"]}", value)
-              }
+              printf("        \"%s\"", $0)
 
               first=0
             }
-            ' domain.txt
 
-            echo
-            echo '  ]'
-            echo '}'
-          } > httpdns_domain.json
-
-          # 生成 ip json
-          {
-            echo '{'
-            echo '  "version": 1,'
-            echo '  "rules": ['
-
-            awk -F',' '
-            BEGIN { first=1 }
-
-            {
-              gsub(/^- /, "", $1)
-
-              value=$2
-
-              if (!first) {
-                printf(",\n")
-              }
-
-              printf("    {\"ip_cidr\": [\"%s\"]}", value)
-
-              first=0
+            END {
+              printf("\n")
             }
             ' ip.txt
 
-            echo
+            echo '      ]'
+            echo '    }'
             echo '  ]'
             echo '}'
           } > httpdns_ip.json
 
-      - name: Compile httpdns domain rules
-        run: |
-          ./sing-box rule-set compile \
-            --output httpdns-domain.srs \
-            httpdns_domain.json
+          echo "Generated httpdns_ip.json:"
+          cat httpdns_ip.json
 
       - name: Compile httpdns ip rules
         run: |
@@ -181,7 +142,6 @@ jobs:
 
           git add \
             AWAvenue-Ads-Rule-Singbox.srs \
-            httpdns-domain.srs \
             httpdns-ip.srs \
             cnip_v4.nft \
             cnip_v6.nft

@@ -20,7 +20,7 @@ jobs:
 
       - name: Clone cronet-go
         run: |
-          git clone --recursive --depth=1 https://github.com/SagerNet/cronet-go.git
+          git clone --depth 1 --branch v1.13.5 https://github.com/SagerNet/cronet-go.git
 
       - name: Prepare cronet-go toolchain (linux arm64 musl)
         run: |

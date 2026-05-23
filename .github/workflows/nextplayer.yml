@@ -3,22 +3,16 @@ name: Build NextPlayer ARM64
 on:
   workflow_dispatch:
 
-  schedule:
-    - cron: "0 */6 * * *"
-
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout current repo
-        uses: actions/checkout@v4
-
-      - name: Clone NextPlayer
+      - name: Clone source
         run: |
-          git clone https://github.com/odkrys/nextplayer.git source
+          git clone --depth=1 https://github.com/odkrys/nextplayer.git source
 
-      - name: Setup JDK 21
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -27,43 +21,20 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Enable gradlew
+      - name: Build APK
         run: |
           cd source
           chmod +x gradlew
-
-      - name: Force arm64-v8a only
-        run: |
-          cd source
-
-          if ! grep -q 'include "arm64-v8a"' app/build.gradle.kts; then
-            cat >> app/build.gradle.kts <<'EOF'
-
-android {
-    splits {
-        abi {
-            isEnable = true
-            reset()
-            include("arm64-v8a")
-            isUniversalApk = false
-        }
-    }
-}
-EOF
-          fi
-
-      - name: Build release APK
-        run: |
-          cd source
           ./gradlew assembleRelease
 
-      - name: Prepare APK
+      - name: Collect arm64 APK
         run: |
           mkdir output
 
-          find source -name "*.apk" -exec cp {} output/ \;
+          find source -type f -name "*arm64-v8a*.apk" \
+            -exec cp {} output/ \;
 
-      - name: Upload APK
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: nextplayer-arm64

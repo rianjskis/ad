@@ -7,6 +7,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    env:
+      KEY_ALIAS: nextplayer
+      KEYSTORE_PASSWORD: android
+      KEY_PASSWORD: android
+
     steps:
       - name: Clone source
         run: |
@@ -21,21 +26,73 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Build APK
+      # 第一次运行：自动生成 keystore
+      - name: Generate keystore
+        if: ${{ !secrets.KEYSTORE_BASE64 }}
+        run: |
+          keytool -genkeypair \
+            -v \
+            -storetype PKCS12 \
+            -keystore release.keystore \
+            -alias "$KEY_ALIAS" \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass "$KEYSTORE_PASSWORD" \
+            -keypass "$KEY_PASSWORD" \
+            -dname "CN=NextPlayer, OU=GitHub, O=Actions, L=Internet, S=CI, C=US"
+
+          base64 -w 0 release.keystore > keystore.base64
+
+          echo ""
+          echo "=========================="
+          echo "COPY THIS INTO SECRET:"
+          echo ""
+          cat keystore.base64
+          echo ""
+          echo "=========================="
+
+      # 后续运行：恢复固定 keystore
+      - name: Restore keystore
+        if: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.keystore
+
+      - name: Build Release APK
         run: |
           cd source
           chmod +x gradlew
           ./gradlew assembleRelease
 
-      - name: Collect arm64 APK
+      - name: Sign APK
         run: |
-          mkdir output
+          mkdir -p output
 
-          find source -type f -name "*arm64-v8a*.apk" \
-            -exec cp {} output/ \;
+          APK=$(find source -type f -name "*unsigned.apk" | head -n 1)
 
-      - name: Upload
+          BUILD_TOOLS=$(find $ANDROID_HOME/build-tools -maxdepth 1 -type d | sort -V | tail -n 1)
+
+          echo "Using APK: $APK"
+
+          $BUILD_TOOLS/zipalign -f 4 "$APK" aligned.apk
+
+          $BUILD_TOOLS/apksigner sign \
+            --ks release.keystore \
+            --ks-pass pass:$KEYSTORE_PASSWORD \
+            --key-pass pass:$KEY_PASSWORD \
+            --ks-key-alias $KEY_ALIAS \
+            --out output/nextplayer-arm64.apk \
+            aligned.apk
+
+      - name: Verify signature
+        run: |
+          BUILD_TOOLS=$(find $ANDROID_HOME/build-tools -maxdepth 1 -type d | sort -V | tail -n 1)
+
+          $BUILD_TOOLS/apksigner verify output/nextplayer-arm64.apk
+
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: nextplayer-arm64
           path: output/*.apk
+          retention-days: 30

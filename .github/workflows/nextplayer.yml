@@ -82,6 +82,9 @@ jobs:
             --ks-pass pass:$KEYSTORE_PASSWORD \
             --key-pass pass:$KEY_PASSWORD \
             --ks-key-alias $KEY_ALIAS \
+            --v1-signing-enabled false \
+            --v2-signing-enabled true \
+            --v3-signing-enabled true \
             --out output/nextplayer-arm64.apk \
             aligned.apk
 

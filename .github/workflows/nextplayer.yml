@@ -63,7 +63,9 @@ jobs:
         run: |
           cd source
           chmod +x gradlew
-          ./gradlew assembleRelease
+
+          ./gradlew assembleRelease \
+            -Pandroid.injected.build.abi=arm64-v8a
 
       - name: Sign APK
         run: |

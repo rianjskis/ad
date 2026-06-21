@@ -1,0 +1,36 @@
+name: Build M3U from Remote TXT
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 2 * * *"  # 每天自动更新（可选）
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download TXT & Convert
+        run: |
+          mkdir -p output
+
+          curl -L "https://github.com/YueChan/Live/raw/refs/heads/main/Hunan.txt" -o hunan.txt
+
+          python convert.py hunan.txt output/hunan.m3u
+
+      - name: Commit result
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+          git add output/hunan.m3u
+          git commit -m "update m3u" || echo "no changes"
+          git push

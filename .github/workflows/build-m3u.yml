@@ -3,7 +3,7 @@ name: Build M3U from Remote TXT
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 2 * * *"  # 每天自动更新（可选）
+ #   - cron: "0 2 * * *"  # 每天自动更新（可选）
 
 jobs:
   build:

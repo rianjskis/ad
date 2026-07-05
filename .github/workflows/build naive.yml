@@ -16,7 +16,7 @@ jobs:
 
       - name: Clone sing-box
         run: |
-          git clone --depth 1 -b testing --single-branch https://github.com/SagerNet/sing-box.git
+          git clone --depth 1 -b reF1nd-testing --single-branch https://github.com/reF1nd/sing-box.git
 
       - name: Clone cronet-go
         run: |

@@ -12,12 +12,12 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@main
         with:
-          go-version: '1.25.5'
+          go-version: '1.25.11'
           cache: false
 
       - name: Git clone
         run: |
-          git clone --depth 1 -b reF1nd-testing --single-branch https://github.com/reF1nd/sing-box.git
+          git clone --depth 1 -b testing --single-branch https://github.com/SagerNet/sing-box.git
 
       - name: Setup NDK
         uses: nttld/setup-ndk@v1

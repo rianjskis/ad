@@ -17,7 +17,7 @@ jobs:
 
       - name: Git clone
         run: |
-          git clone --depth 1 -b reF1nd-testing --single-branch https://github.com/reF1nd/sing-box
+          git clone --depth 1 -b testing --single-branch https://github.com/SagerNet/sing-box
 
       - name: Setup NDK
         uses: nttld/setup-ndk@v1

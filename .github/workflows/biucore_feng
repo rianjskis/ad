@@ -1,4 +1,4 @@
-name: build core
+name: build core_feng
 
 on:
   workflow_dispatch:

@@ -1,4 +1,4 @@
-name: build naive
+name: build naive feng
 
 on:
   workflow_dispatch:

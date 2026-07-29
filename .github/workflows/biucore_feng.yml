@@ -44,7 +44,7 @@ jobs:
 
       - name: Build sing-box (windows amd64)
         env:
-          TAGS: with_quic with_dhcp with_utls with_acme with_clash_api with_gvisor with_ebpf badlinkname tfogo_checklinkname0
+          TAGS: with_quic with_dhcp with_utls with_acme with_clash_api with_gvisor badlinkname tfogo_checklinkname0
         run: |
           cd sing-box
           export CGO_ENABLED=0
@@ -61,7 +61,7 @@ jobs:
       - name: Build sing-box (android arm64)
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
-          TAGS: with_quic with_dhcp with_utls with_acme with_clash_api with_gvisor badlinkname tfogo_checklinkname0
+          TAGS: with_quic with_dhcp with_utls with_acme with_clash_api with_gvisor with_ebpf badlinkname tfogo_checklinkname0
         run: |
           cd sing-box
 

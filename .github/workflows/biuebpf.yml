@@ -7,7 +7,7 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     env:
-      TAGS: with_gvisor,with_quic,with_dhcp,with_utls,with_clash_api,badlinkname,tfogo_checklinkname0,with_provider,with_ebpf
+      TAGS: with_quic with_dhcp with_utls with_acme with_clash_api with_gvisor with_ebpf badlinkname tfogo_checklinkname0
     steps:
       - name: Checkout
         uses: actions/checkout@v6

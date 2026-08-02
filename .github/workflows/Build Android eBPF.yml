@@ -12,15 +12,8 @@ jobs:
         include:
           - goarch: arm64
             compiler: aarch64-linux-android33-clang
-          - goarch: arm
-            goarm: "7"
-            compiler: armv7a-linux-androideabi33-clang
-          - goarch: amd64
-            compiler: x86_64-linux-android33-clang
-          - goarch: "386"
-            compiler: i686-linux-android33-clang
     env:
-      TAGS: with_gvisor,with_quic,with_dhcp,with_utls,with_clash_api,badlinkname,tfogo_checklinkname0,with_provider,with_ebpf
+      TAGS: with_gvisor,with_quic,with_dhcp,with_utls,with_clash_api,badlinkname,tfogo_checklinkname0,with_ebpf
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -50,6 +43,7 @@ jobs:
           CC: ${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin/${{ matrix.compiler }}
           BPF_CLANG: ${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android33-clang
         run: |
+          cd sing-box
           make build
 
       - name: Upload

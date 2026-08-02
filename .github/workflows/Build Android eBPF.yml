@@ -31,6 +31,9 @@ jobs:
         with:
           ndk-version: r25c
 
+      - name: Git clone
+        run: |
+          git clone --depth 1 -b testing-ref1nd --single-branch https://github.com/CHIZI-0618/sing-box
       - name: Build
         env:
           CGO_ENABLED: "1"

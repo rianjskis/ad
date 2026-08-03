@@ -69,12 +69,8 @@ jobs:
           export GOOS=android
           export GOARCH=arm64
           export CC=${CC}
-
-          go build -v -trimpath \
-            -tags "$TAGS" \
-            -ldflags "-checklinkname=0 -X 'internal/godebug.defaultGODEBUG=multipathtcp=0' -s -w -buildid=" \
-            -o sing-boxandroidarm64 \
-            ./cmd/sing-box
+          TAGS="$TAGS" make build
+          mv sing-box sing-boxandroidarm64
 
       - name: Upload files
         uses: actions/upload-artifact@main

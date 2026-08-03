@@ -11,12 +11,12 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@main
         with:
-          go-version: '1.25.12'
+          go-version: '1.25.5'
           cache: false
 
       - name: Clone sing-box
         run: |
-          git clone -b testing-ref1nd --single-branch https://github.com/reF1nd/sing-box.git
+          git clone -b testing-ref1nd --single-branch https://github.com/CHIZI-0618/sing-box
 
       - name: Clone cronet-go
         run: |

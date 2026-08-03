@@ -16,7 +16,7 @@ jobs:
 
       - name: Clone sing-box
         run: |
-          git clone -b testing-ref1nd --single-branch https://github.com/CHIZI-0618/sing-box
+          git clone -b testing-ref1nd --single-branch https://github.com/reF1nd/sing-box.git
 
       - name: Clone cronet-go
         run: |

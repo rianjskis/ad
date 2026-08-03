@@ -11,7 +11,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@main
         with:
-          go-version: '1.25.5'
+          go-version: '1.25.12'
           cache: false
 
       - name: Clone sing-box
@@ -75,7 +75,7 @@ jobs:
         uses: nttld/setup-ndk@v1
         id: setup-ndk
         with:
-          ndk-version: r29
+          ndk-version: r28
           add-to-path: false
           local-cache: false
 
@@ -85,7 +85,7 @@ jobs:
         run: |
           cd sing-box
 
-          CC=${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android35-clang
+          CC=${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android33-clang
 
           export CGO_ENABLED=1
           export GOOS=android

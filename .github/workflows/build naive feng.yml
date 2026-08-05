@@ -75,7 +75,7 @@ jobs:
         uses: nttld/setup-ndk@v1
         id: setup-ndk
         with:
-          ndk-version: r28
+          ndk-version: r29
           add-to-path: false
           local-cache: false
 
@@ -85,7 +85,7 @@ jobs:
         run: |
           cd sing-box
 
-          CC=${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android33-clang
+          CC=${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android35-clang
 
           export CGO_ENABLED=1
           export GOOS=android

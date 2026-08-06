@@ -12,10 +12,8 @@ jobs:
         include:
           - goarch: arm64
             compiler: aarch64-linux-android35-clang
-
     env:
-      TAGS: with_quic,with_utls,wwith_clash_api,with_gvisor,with_ebpf,badlinkname tfogo_checklinkname0
-
+      TAGS: with_gvisor,with_quic,with_dhcp,with_utls,with_clash_api,badlinkname,tfogo_checklinkname0,with_ebpf
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -46,7 +44,6 @@ jobs:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
           CC: ${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin/${{ matrix.compiler }}
           BPF_CLANG: ${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android35-clang
-
         run: |
           make build
 

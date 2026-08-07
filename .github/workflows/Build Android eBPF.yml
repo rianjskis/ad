@@ -27,7 +27,7 @@ jobs:
 
       - name: Git clone
         run: |  
-          git clone -b testing-ref1nd-ebpf-backup0803 --single-branch https://github.com/CHIZI-0618/sing-box
+          git clone -b testing-ebpf --single-branch https://github.com/CHIZI-0618/sing-box
       - name: Setup Android NDK
         id: setup-ndk
         uses: nttld/setup-ndk@v1

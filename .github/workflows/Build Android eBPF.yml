@@ -29,7 +29,7 @@ jobs:
         run: |
           git clone -b testing-ebpf --single-branch https://github.com/CHIZI-0618/sing-box
           cd sing-box
-          git checkout e0fbaa3dfdfe039b7029dd2295c58f4b56548d23
+          git checkout 576e8adde5e46d4ebb2a2e985f59e57b3f69e931
           
       - name: Setup Android NDK
         id: setup-ndk

@@ -17,7 +17,7 @@ jobs:
 
       - name: Git clone
         run: |
-          git clone -b stable --single-branch https://github.com/SagerNet/sing-box
+          git clone -b testing --single-branch https://github.com/SagerNet/sing-box
 
       - name: Setup NDK
         uses: nttld/setup-ndk@v1

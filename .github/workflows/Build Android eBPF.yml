@@ -13,7 +13,7 @@ jobs:
           - goarch: arm64
             compiler: aarch64-linux-android35-clang
     env:
-      TAGS: with_gvisor,with_quic,with_dhcp,with_utls,with_clash_api,badlinkname,tfogo_checklinkname0,with_ebpf
+      TAGS: with_gvisor,with_quic,with_dhcp,with_utls,with_clash_api,with_ebpf,badlinkname,tfogo_checklinkname0
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -28,6 +28,7 @@ jobs:
       - name: Git clone
         run: |  
           git clone -b testing-ebpf-cilium --single-branch https://github.com/CHIZI-0618/sing-box
+          
       - name: Setup Android NDK
         id: setup-ndk
         uses: nttld/setup-ndk@v1
@@ -42,8 +43,7 @@ jobs:
           GOARM: ${{ matrix.goarm }}
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
           CC: ${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin/${{ matrix.compiler }}
-          BPF_CLANG: ${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android35-clang
-        run: |
+        run: |      
           cd sing-box
           make build
 

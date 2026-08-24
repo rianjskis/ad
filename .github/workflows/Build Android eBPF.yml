@@ -28,6 +28,8 @@ jobs:
       - name: Git clone
         run: |  
           git clone -b testing-ebpf-cilium --single-branch https://github.com/CHIZI-0618/sing-box
+          cd sing-box
+          git checkout a26e26f2f8e0730adf73060de764fac42e92d731
       - name: Clone cronet-go
         run: |
           git clone --recursive --depth=1 https://github.com/SagerNet/cronet-go.git

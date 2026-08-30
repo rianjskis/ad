@@ -29,9 +29,7 @@ jobs:
             "https://github.com/SagerNet/sing-box/releases/download/${SB_TAG}/sing-box-${SB_VER}-linux-amd64.tar.gz"
 
           tar -xzf sing-box.tar.gz
-
           mv sing-box-${SB_VER}-linux-amd64/sing-box ./sing-box
-
           chmod +x ./sing-box
 
       # 原有规则
@@ -97,12 +95,9 @@ jobs:
       # 生成 cnip v4/v6 nft
       - name: Generate cnip v4/v6 nft
         run: |
-          # 下载 IPv4 / IPv6
-          wget -qO cnip_v4.txt \
-            "https://raw.githubusercontent.com/DH-Teams/DH-Geo_AS_IP_CN/main/Geo_AS_IP_CN.txt"
-
-          wget -qO cnip_v6.txt \
-            "https://raw.githubusercontent.com/DH-Teams/DH-Geo_AS_IP_CN/main/Geo_AS_IP_CN_6.txt"
+          # 下载 Loyalsoldier 中国 IP 地址列表
+          wget -qO cn.txt \
+            "https://github.com/Loyalsoldier/geoip/raw/refs/heads/release/text/cn.txt"
 
           # IPv4
           {
@@ -112,7 +107,11 @@ jobs:
             echo "    auto-merge"
             echo "    elements = {"
 
-            awk '{print "        "$0","}' cnip_v4.txt
+            awk '
+              /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\/[0-9]+$/ {
+                print "        " $0 ","
+              }
+            ' cn.txt
 
             echo "    }"
             echo "}"
@@ -126,11 +125,26 @@ jobs:
             echo "    auto-merge"
             echo "    elements = {"
 
-            awk '{print "        "$0","}' cnip_v6.txt
+            awk '
+              /:/ {
+                print "        " $0 ","
+              }
+            ' cn.txt
 
             echo "    }"
             echo "}"
           } > cnip_v6.nft
+
+          # 显示生成结果
+          echo "===== cnip_v4.nft ====="
+          head -n 10 cnip_v4.nft
+          echo "..."
+          echo "IPv4 entries: $(grep -cE '^[[:space:]]+[0-9]+\.' cnip_v4.nft)"
+
+          echo "===== cnip_v6.nft ====="
+          head -n 10 cnip_v6.nft
+          echo "..."
+          echo "IPv6 entries: $(grep -cE '^[[:space:]]+[0-9a-fA-F]*:' cnip_v6.nft)"
 
       # 提交更新
       - name: Commit and push

@@ -34,7 +34,41 @@ jobs:
         uses: nttld/setup-ndk@v1
         with:
           ndk-version: r29
+      - name: Clone cronet-go
+        run: |
+          git clone --recursive --depth=1 https://github.com/SagerNet/cronet-go.git
 
+      - name: Prepare cronet-go toolchain (linux arm64 musl)
+        run: |
+          set -euo pipefail
+          cd cronet-go
+
+          go run ./cmd/build-naive \
+            --target=linux/arm64 \
+            --libc=musl \
+            download-toolchain
+
+          go run ./cmd/build-naive \
+            --target=linux/arm64 \
+            --libc=musl \
+            env >> "$GITHUB_ENV"
+
+      - name: Build sing-box (linux arm64 musl naive)
+        run: |
+          set -euo pipefail
+          cd sing-box
+
+          export CGO_ENABLED=1
+          export GOOS=linux
+          export GOARCH=arm64
+
+          TAGS="with_quic with_dhcp with_utls with_acme with_clash_api with_gvisor with_naive_outbound with_musl badlinkname tfogo_checklinkname0"
+
+          go build -v -trimpath \
+            -tags "$TAGS" \
+            -ldflags "-checklinkname=0 -X 'internal/godebug.defaultGODEBUG=multipathtcp=0' -s -w -buildid=" \
+            -o sing-box-linux-arm64-musl \
+            ./cmd/sing-box
       - name: Build
         env:
           CGO_ENABLED: "1"

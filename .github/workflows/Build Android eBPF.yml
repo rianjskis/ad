@@ -35,6 +35,10 @@ jobs:
         with:
           ndk-version: r29
 
+      - name: Clone cronet-go
+        run: |
+          git clone --recursive --depth=1 https://github.com/SagerNet/cronet-go.git
+
       - name: Prepare cronet-go toolchain (linux arm64 musl)
         run: |
           set -euo pipefail

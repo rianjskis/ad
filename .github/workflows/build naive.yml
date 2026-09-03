@@ -11,7 +11,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@main
         with:
-          go-version: '1.26.6'
+          go-version: '1.26.7'
           cache: false
 
       - name: Clone sing-box
@@ -46,7 +46,7 @@ jobs:
           export GOOS=linux
           export GOARCH=arm64
 
-          TAGS="with_quic with_dhcp with_utls with_acme with_clash_api with_gvisor with_naive_outbound with_musl badlinkname tfogo_checklinkname0"
+          TAGS="with_quic with_utls with_clash_api with_gvisor with_naive_outbound with_musl badlinkname tfogo_checklinkname0"
 
           go build -v -trimpath \
             -tags "$TAGS" \
@@ -63,7 +63,7 @@ jobs:
           export GOOS=windows
           export GOARCH=amd64
 
-          TAGS="with_quic with_dhcp with_utls with_acme with_clash_api with_gvisor with_naive_outbound with_purego badlinkname tfogo_checklinkname0"
+          TAGS="with_quic with_utls with_clash_api with_gvisor with_naive_outbound with_musl badlinkname tfogo_checklinkname0"
 
           go build -v -trimpath \
             -tags "$TAGS" \
@@ -92,7 +92,7 @@ jobs:
           export GOARCH=arm64
           export CC=${CC}
 
-          TAGS="with_quic with_dhcp with_utls with_acme with_clash_api with_gvisor with_naive_outbound badlinkname tfogo_checklinkname0"
+          TAGS="with_quic with_utls with_clash_api with_gvisor with_naive_outbound with_musl badlinkname tfogo_checklinkname0"
 
           go build -v -trimpath \
             -tags "$TAGS" \

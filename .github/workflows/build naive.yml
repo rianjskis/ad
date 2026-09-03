@@ -54,22 +54,22 @@ jobs:
             -o sing-box-linux-arm64-musl \
             ./cmd/sing-box
 
-      - name: Build sing-box (windows amd64 purego naive)
-        run: |
-          set -euo pipefail
-          cd sing-box
-
-          export CGO_ENABLED=0
-          export GOOS=windows
-          export GOARCH=amd64
-
-          TAGS="with_quic with_utls with_clash_api with_gvisor with_naive_outbound with_musl badlinkname tfogo_checklinkname0"
-
-          go build -v -trimpath \
-            -tags "$TAGS" \
-            -ldflags "-checklinkname=0 -X 'internal/godebug.defaultGODEBUG=multipathtcp=0' -s -w -buildid=" \
-            -o sing-box-windows-amd64.exe \
-            ./cmd/sing-box
+#      - name: Build sing-box (windows amd64 purego naive)
+ #       run: |
+  #        set -euo pipefail
+   #       cd sing-box
+#
+ #         export CGO_ENABLED=0
+  #        export GOOS=windows
+   #       export GOARCH=amd64
+#
+ #         TAGS="with_quic with_utls with_clash_api with_gvisor with_naive_outbound with_musl badlinkname tfogo_checklinkname0"
+#
+ #         go build -v -trimpath \
+  #          -tags "$TAGS" \
+   #         -ldflags "-checklinkname=0 -X 'internal/godebug.defaultGODEBUG=multipathtcp=0' -s -w -buildid=" \
+    #        -o sing-box-windows-amd64.exe \
+     #       ./cmd/sing-box
 
       - name: Setup NDK
         uses: nttld/setup-ndk@v1

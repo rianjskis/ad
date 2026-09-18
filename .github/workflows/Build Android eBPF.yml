@@ -5,15 +5,19 @@ on:
 
 jobs:
   build:
+    name: Build (${{ matrix.target.goarch }})
     runs-on: ubuntu-24.04
+
     strategy:
       fail-fast: false
       matrix:
-        include:
+        target:
           - goarch: arm64
             compiler: aarch64-linux-android35-clang
+
     env:
-      TAGS: with_quic,with_dhcp,with_utls,with_clash_api,with_ebpf,badlinkname,tfogo_checklinkname0
+      BASE_TAGS: with_quic,with_dhcp,with_utls,with_clash_api,with_ebpf,badlinkname,tfogo_checklinkname0
+
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -23,10 +27,10 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
-          go-version: 1.26.6
+          go-version: 1.26.8
 
       - name: Git clone
-        run: |  
+        run: |
           git clone -b ebpf-inbound --single-branch https://github.com/CHIZI-0618/sing-box
 
       - name: Setup Android NDK
@@ -34,22 +38,22 @@ jobs:
         uses: nttld/setup-ndk@v1
         with:
           ndk-version: r29
-            
+
       - name: Build
         env:
           CGO_ENABLED: "1"
           GOOS: android
-          GOARCH: ${{ matrix.goarch }}
-          GOARM: ${{ matrix.goarm }}
+          GOARCH: ${{ matrix.target.goarch }}
+          GOARM: ${{ matrix.target.goarm }}
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
-          CC: ${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin/${{ matrix.compiler }}
-        run: |      
-          cd sing-box
+          CC: ${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin/${{ matrix.target.compiler }}
+
+        run: |
+          export TAGS="$BASE_TAGS"
           make build
 
       - name: Upload
         uses: actions/upload-artifact@v7
         with:
-          name: sing-box-android-${{ matrix.goarch }}-with-ebpf
-          path: |
-            sing-box
+          name: sing-box-android-${{ matrix.target.goarch }}-with-ebpf
+          path: sing-box

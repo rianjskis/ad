@@ -52,46 +52,9 @@ jobs:
           cd sing-box
           export TAGS="$BASE_TAGS"
           make build
-      - name: Clone cronet-go
-        run: |
-          git clone --recursive --depth=1 https://github.com/SagerNet/cronet-go.git
-
-      - name: Prepare cronet-go toolchain (linux arm64 musl)
-        run: |
-          set -euo pipefail
-          cd cronet-go
-
-          go run ./cmd/build-naive \
-            --target=linux/arm64 \
-            --libc=musl \
-            download-toolchain
-
-          go run ./cmd/build-naive \
-            --target=linux/arm64 \
-            --libc=musl \
-            env >> "$GITHUB_ENV"
-
-      - name: Build sing-box (linux arm64 musl naive)
-        run: |
-          set -euo pipefail
-          cd sing-box
-
-          export CGO_ENABLED=1
-          export GOOS=linux
-          export GOARCH=arm64
-
-          TAGS="with_quic with_utls with_clash_api with_gvisor with_naive_outbound with_musl badlinkname tfogo_checklinkname0"
-
-          go build -v -trimpath \
-            -tags "$TAGS" \
-            -ldflags "-checklinkname=0 -X 'internal/godebug.defaultGODEBUG=multipathtcp=0' -s -w -buildid=" \
-            -o sing-box-linux-arm64-musl \
-            ./cmd/sing-box
             
       - name: Upload
         uses: actions/upload-artifact@v7
         with:
           name: sing-box-android-${{ matrix.target.goarch }}-with-ebpf
-          path: |
-            sing-box/sing-box-androidarm64
-            sing-box/sing-box-linux-arm64-musl
+          path: sing-box

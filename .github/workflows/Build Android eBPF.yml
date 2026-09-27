@@ -17,7 +17,7 @@ jobs:
 
       - name: Git clone
         run: |
-          git clone -b testing-ebpf --single-branch https://github.com/Yuu518/sing-box
+          git clone -b ebpf-inbound --single-branch https://github.com/CHIZI-0618/sing-box
 
       - name: Setup NDK
         uses: nttld/setup-ndk@v1

@@ -5,56 +5,56 @@ on:
 
 jobs:
   build:
-    name: Build (${{ matrix.target.goarch }})
-    runs-on: ubuntu-24.04
-
-    strategy:
-      fail-fast: false
-      matrix:
-        target:
-          - goarch: arm64
-            compiler: aarch64-linux-android35-clang
-
-    env:
-      BASE_TAGS: with_quic,with_dhcp,with_utls,with_clash_api,with_ebpf,badlinkname,tfogo_checklinkname0
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
 
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@main
         with:
-          go-version: 1.26.8
+          go-version: '1.26.8'
+          cache: false
 
       - name: Git clone
         run: |
-          git clone -b testing-ref1nd --single-branch https://github.com/CHIZI-0618/sing-box
+          git clone -b testing-ebpf --single-branch https://github.com/Yuu518/sing-box
 
-      - name: Setup Android NDK
-        id: setup-ndk
+      - name: Setup NDK
         uses: nttld/setup-ndk@v1
+        id: setup-ndk
         with:
           ndk-version: r29
 
-      - name: Build
+      - name: Build sing-box (android arm64)
         env:
-          CGO_ENABLED: "1"
-          GOOS: android
-          GOARCH: ${{ matrix.target.goarch }}
-          GOARM: ${{ matrix.target.goarm }}
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
-          CC: ${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin/${{ matrix.target.compiler }}
-
+          TAGS: with_quic with_ebpf with_utls with_clash_api badlinkname tfogo_checklinkname0
         run: |
           cd sing-box
-          export TAGS="$BASE_TAGS"
-          make build
-            
-      - name: Upload
-        uses: actions/upload-artifact@v7
+
+          CC=${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android35-clang
+
+          export CGO_ENABLED=1
+          export GOOS=android
+          export GOARCH=arm64
+          export CC=${CC}
+
+          go build -v -trimpath \
+            -tags "$TAGS" \
+            -ldflags "-checklinkname=0 -X 'internal/godebug.defaultGODEBUG=multipathtcp=0' -s -w -buildid=" \
+            -o sing-boxandroidarm64 \
+            ./cmd/sing-box
+
+      - name: Upload files
+        uses: actions/upload-artifact@main
         with:
-          name: sing-box-android-${{ matrix.target.goarch }}-with-ebpf
-          path: sing-box
+          name: sing-box
+          path: |
+            sing-box/sing-boxandroidarm64
+
+      - name: 删除工作流程运行
+        uses: Mattraks/delete-workflow-runs@main
+        with:
+          token: ${{ github.token }}
+          retain_days: 1
+          keep_minimum_runs: 2

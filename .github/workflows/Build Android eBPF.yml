@@ -50,7 +50,7 @@ jobs:
         with:
           name: sing-box
           path: |
-            sing-box/sing-box
+            sing-box/sing-boxandroidarm64
 
       - name: 删除工作流程运行
         uses: Mattraks/delete-workflow-runs@main

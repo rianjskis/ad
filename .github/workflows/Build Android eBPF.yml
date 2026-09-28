@@ -45,12 +45,12 @@ jobs:
             -o sing-boxandroidarm64 \
             ./cmd/sing-box
 
-      - name: Upload files
-        uses: actions/upload-artifact@main
-        with:
-          name: sing-box
-          path: |
-            sing-box/sing-box-androidarm64
+      - name: Upload files        
+        uses: actions/upload-artifact@main        
+        with:          
+          name: sing-box         
+          path: |            
+            sing-box/sing-boxandroidarm64
 
       - name: 删除工作流程运行
         uses: Mattraks/delete-workflow-runs@main

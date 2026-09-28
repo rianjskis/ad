@@ -47,7 +47,7 @@ jobs:
           export GOOS=linux
           export GOARCH=arm64
 
-          TAGS="with_quic with_utls with_clash_api with_naive_outbound with_musl badlinkname tfogo_checklinkname0"
+          TAGS="with_quic with_ebpf with_utls with_clash_api with_naive_outbound with_musl badlinkname tfogo_checklinkname0"
 
           go build -v -trimpath \
             -tags "$TAGS" \

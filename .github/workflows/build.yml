@@ -61,7 +61,65 @@ jobs:
           # 验证版本
           ./sing-box version
 
+      # 下载 AWAvenue Ads 规则
+      - name: Download AWAvenue Ads rules
+        run: |
+          wget -qO AWAvenue-Ads-Rule-Singbox.json \
+            "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/Filters/AWAvenue-Ads-Rule-Singbox.json"
 
+      # 下载 httpdns 规则
+      - name: Download httpdns rules
+        run: |
+          wget -qO httpdns.json \
+            "https://raw.githubusercontent.com/QuixoticHeart/rule-set/ruleset/singbox/version2/httpdns.json"
+
+      # 合并 AWAvenue Ads + httpdns
+      - name: Merge AWAvenue Ads and httpdns rules
+        run: |
+          jq -s '
+            .[0] as $ads |
+            .[1] as $http |
+            {
+              version: $ads.version,
+              rules: (
+                ($ads.rules // []) +
+
+                # httpdns domain + domain_suffix
+                [
+                  $http.rules[]?
+                  | select(
+                      (.domain != null and .domain != [])
+                      or
+                      (.domain_suffix != null and .domain_suffix != [])
+                    )
+                  | with_entries(
+                      select(
+                        .key == "domain"
+                        or
+                        .key == "domain_suffix"
+                      )
+                    )
+                ] +
+
+                # httpdns ip_cidr
+                [
+                  $http.rules[]?
+                  | select(.ip_cidr != null and .ip_cidr != [])
+                  | { ip_cidr }
+                ]
+              )
+            }
+          ' \
+          AWAvenue-Ads-Rule-Singbox.json \
+          httpdns.json \
+          > merged_rules.json
+
+      # 编译合并后的规则
+      - name: Compile merged rules to srs
+        run: |
+          ./sing-box rule-set compile \
+            --output AWAvenue-Ads-Rule-Singbox.srs \
+            merged_rules.json
       # 生成 cnip v4/v6 nft
       - name: Generate cnip v4/v6 nft
         run: |

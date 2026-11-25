@@ -41,7 +41,7 @@ jobs:
       - name: Convert json to srs
         run: |
           ./sing-box rule-set compile \
-            --output AWAvenue-Ads-Rule-Singbox.srs \
+            --output ad.srs \
             AWAvenue-Ads-Rule-Singbox.json
             
       # httpdns 规则直接转换为 srs
@@ -115,7 +115,7 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
           git add \
-            AWAvenue-Ads-Rule-Singbox.srs \
+            ad.srs \
             httpdns.srs \
             cnip_v4.nft \
             cnip_v6.nft

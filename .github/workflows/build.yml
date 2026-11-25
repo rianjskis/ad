@@ -19,79 +19,48 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y wget jq tar curl
 
+
       - name: Download sing-box (latest stable)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
-          SB_TAG=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | grep '"tag_name"' | cut -d '"' -f 4)
+          # 获取最新正式版版本号
+          SB_TAG=$(curl -fsSL \
+            --retry 3 \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            https://api.github.com/repos/SagerNet/sing-box/releases/latest \
+            | jq -er '.tag_name')
+
+          # 检查版本号
+          if [ -z "$SB_TAG" ]; then
+            echo "Error: Failed to get sing-box version"
+            exit 1
+          fi
+
           SB_VER=${SB_TAG#v}
 
           echo "Latest version: $SB_TAG"
 
-          wget -qO sing-box.tar.gz \
-            "https://github.com/SagerNet/sing-box/releases/download/${SB_TAG}/sing-box-${SB_VER}-linux-amd64.tar.gz"
+          # 下载 sing-box
+          DOWNLOAD_URL="https://github.com/SagerNet/sing-box/releases/download/${SB_TAG}/sing-box-${SB_VER}-linux-amd64.tar.gz"
 
+          echo "Download URL: $DOWNLOAD_URL"
+
+          curl -fSL --retry 3 \
+            -o sing-box.tar.gz \
+            "$DOWNLOAD_URL"
+
+          # 解压
           tar -xzf sing-box.tar.gz
-          mv sing-box-${SB_VER}-linux-amd64/sing-box ./sing-box
+
+          mv "sing-box-${SB_VER}-linux-amd64/sing-box" ./sing-box
+
           chmod +x ./sing-box
 
-      # 下载 AWAvenue Ads 规则
-      - name: Download AWAvenue Ads rules
-        run: |
-          wget -qO AWAvenue-Ads-Rule-Singbox.json \
-            "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/Filters/AWAvenue-Ads-Rule-Singbox.json"
+          # 验证版本
+          ./sing-box version
 
-      # 下载 httpdns 规则
-      - name: Download httpdns rules
-        run: |
-          wget -qO httpdns.json \
-            "https://raw.githubusercontent.com/QuixoticHeart/rule-set/ruleset/singbox/version2/httpdns.json"
-
-      # 合并 AWAvenue Ads + httpdns
-      - name: Merge AWAvenue Ads and httpdns rules
-        run: |
-          jq -s '
-            .[0] as $ads |
-            .[1] as $http |
-            {
-              version: $ads.version,
-              rules: (
-                ($ads.rules // []) +
-
-                # httpdns domain + domain_suffix
-                [
-                  $http.rules[]?
-                  | select(
-                      (.domain != null and .domain != [])
-                      or
-                      (.domain_suffix != null and .domain_suffix != [])
-                    )
-                  | with_entries(
-                      select(
-                        .key == "domain"
-                        or
-                        .key == "domain_suffix"
-                      )
-                    )
-                ] +
-
-                # httpdns ip_cidr
-                [
-                  $http.rules[]?
-                  | select(.ip_cidr != null and .ip_cidr != [])
-                  | { ip_cidr }
-                ]
-              )
-            }
-          ' \
-          AWAvenue-Ads-Rule-Singbox.json \
-          httpdns.json \
-          > merged_rules.json
-
-      # 编译合并后的规则
-      - name: Compile merged rules to srs
-        run: |
-          ./sing-box rule-set compile \
-            --output AWAvenue-Ads-Rule-Singbox.srs \
-            merged_rules.json
 
       # 生成 cnip v4/v6 nft
       - name: Generate cnip v4/v6 nft

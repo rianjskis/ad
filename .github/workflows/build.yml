@@ -1,3 +1,4 @@
+
 name: Update SRS Rule
 
 on:
@@ -32,65 +33,65 @@ jobs:
           mv sing-box-${SB_VER}-linux-amd64/sing-box ./sing-box
           chmod +x ./sing-box
 
-      # 原有规则
-      - name: Download latest rule json
+      # 下载 AWAvenue Ads 规则
+      - name: Download AWAvenue Ads rules
         run: |
           wget -qO AWAvenue-Ads-Rule-Singbox.json \
             "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/Filters/AWAvenue-Ads-Rule-Singbox.json"
 
-      - name: Convert json to srs
-        run: |
-          ./sing-box rule-set compile \
-            --output AWAvenue-Ads-Rule-Singbox.srs \
-            AWAvenue-Ads-Rule-Singbox.json
-
-      # httpdns 规则拆分
-      - name: Download and split httpdns rules
+      # 下载 httpdns 规则
+      - name: Download httpdns rules
         run: |
           wget -qO httpdns.json \
             "https://raw.githubusercontent.com/QuixoticHeart/rule-set/ruleset/singbox/version2/httpdns.json"
 
-          # domain + domain_suffix
-          jq '{
-            version,
-            rules: [
-              .rules[]
-              | select(
-                  (.domain != null and .domain != [])
-                  or
-                  (.domain_suffix != null and .domain_suffix != [])
-                )
-              | with_entries(
-                  select(
-                    .key == "domain"
-                    or
-                    .key == "domain_suffix"
-                  )
-                )
-            ]
-          }' httpdns.json > httpdns_domain.json
+      # 合并 AWAvenue Ads + httpdns
+      - name: Merge AWAvenue Ads and httpdns rules
+        run: |
+          jq -s '
+            .[0] as $ads |
+            .[1] as $http |
+            {
+              version: $ads.version,
+              rules: (
+                ($ads.rules // []) +
 
-          # ip_cidr
-          jq '{
-            version,
-            rules: [
-              .rules[]
-              | select(.ip_cidr != null and .ip_cidr != [])
-              | { ip_cidr }
-            ]
-          }' httpdns.json > httpdns_ip.json
+                # httpdns domain + domain_suffix
+                [
+                  $http.rules[]?
+                  | select(
+                      (.domain != null and .domain != [])
+                      or
+                      (.domain_suffix != null and .domain_suffix != [])
+                    )
+                  | with_entries(
+                      select(
+                        .key == "domain"
+                        or
+                        .key == "domain_suffix"
+                      )
+                    )
+                ] +
 
-      - name: Convert httpdns domain json to srs
+                # httpdns ip_cidr
+                [
+                  $http.rules[]?
+                  | select(.ip_cidr != null and .ip_cidr != [])
+                  | { ip_cidr }
+                ]
+              )
+            }
+          ' \
+          AWAvenue-Ads-Rule-Singbox.json \
+          httpdns.json \
+          > merged_rules.json
+
+      # 编译合并后的规则
+      - name: Compile merged rules to srs
         run: |
           ./sing-box rule-set compile \
-            --output httpdns_domain.srs \
-            httpdns_domain.json
-
-      - name: Convert httpdns ip json to srs
-        run: |
-          ./sing-box rule-set compile \
-            --output httpdns_ip.srs \
-            httpdns_ip.json
+            --output AWAvenue-Ads-Rule-Singbox.srs \
+            merged_rules.json
 
       # 生成 cnip v4/v6 nft
       - name: Generate cnip v4/v6 nft
@@ -152,10 +153,14 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
+          # 删除旧的 httpdns 拆分文件
+          git rm -f --ignore-unmatch \
+            httpdns_domain.srs \
+            httpdns_ip.srs
+
+          # 提交最新规则
           git add \
             AWAvenue-Ads-Rule-Singbox.srs \
-            httpdns_domain.srs \
-            httpdns_ip.srs \
             cnip_v4.nft \
             cnip_v6.nft
 

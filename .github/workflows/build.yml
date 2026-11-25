@@ -11,119 +11,58 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Checkout repository
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      # Install dependencies
       - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y wget jq tar curl
 
-
+      # Download latest stable sing-box
       - name: Download sing-box (latest stable)
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
         run: |
-          # 获取最新正式版版本号
-          SB_TAG=$(curl -fsSL \
-            --retry 3 \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-            https://api.github.com/repos/SagerNet/sing-box/releases/latest \
-            | jq -er '.tag_name')
-
-          # 检查版本号
-          if [ -z "$SB_TAG" ]; then
-            echo "Error: Failed to get sing-box version"
-            exit 1
-          fi
-
+          SB_TAG=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | grep '"tag_name"' | cut -d '"' -f 4)
           SB_VER=${SB_TAG#v}
 
           echo "Latest version: $SB_TAG"
 
-          # 下载 sing-box
-          DOWNLOAD_URL="https://github.com/SagerNet/sing-box/releases/download/${SB_TAG}/sing-box-${SB_VER}-linux-amd64.tar.gz"
+          wget -qO sing-box.tar.gz \
+            "https://github.com/SagerNet/sing-box/releases/download/${SB_TAG}/sing-box-${SB_VER}-linux-amd64.tar.gz"
 
-          echo "Download URL: $DOWNLOAD_URL"
-
-          curl -fSL --retry 3 \
-            -o sing-box.tar.gz \
-            "$DOWNLOAD_URL"
-
-          # 解压
           tar -xzf sing-box.tar.gz
-
-          mv "sing-box-${SB_VER}-linux-amd64/sing-box" ./sing-box
-
+          mv sing-box-${SB_VER}-linux-amd64/sing-box ./sing-box
           chmod +x ./sing-box
 
-          # 验证版本
-          ./sing-box version
-
-      # 下载 AWAvenue Ads 规则
-      - name: Download AWAvenue Ads rules
+      # Download original rule
+      - name: Download latest rule json
         run: |
           wget -qO AWAvenue-Ads-Rule-Singbox.json \
             "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/Filters/AWAvenue-Ads-Rule-Singbox.json"
 
-      # 下载 httpdns 规则
-      - name: Download httpdns rules
+      # Convert JSON to SRS
+      - name: Convert json to srs
+        run: |
+          ./sing-box rule-set compile \
+            --output AWAvenue-Ads-Rule-Singbox.srs \
+            AWAvenue-Ads-Rule-Singbox.json
+
+      # Download and convert HTTPDNS rules
+      - name: Download and convert httpdns rules
         run: |
           wget -qO httpdns.json \
             "https://raw.githubusercontent.com/QuixoticHeart/rule-set/ruleset/singbox/version2/httpdns.json"
 
-      # 合并 AWAvenue Ads + httpdns
-      - name: Merge AWAvenue Ads and httpdns rules
-        run: |
-          jq -s '
-            .[0] as $ads |
-            .[1] as $http |
-            {
-              version: $ads.version,
-              rules: (
-                ($ads.rules // []) +
-
-                # httpdns domain + domain_suffix
-                [
-                  $http.rules[]?
-                  | select(
-                      (.domain != null and .domain != [])
-                      or
-                      (.domain_suffix != null and .domain_suffix != [])
-                    )
-                  | with_entries(
-                      select(
-                        .key == "domain"
-                        or
-                        .key == "domain_suffix"
-                      )
-                    )
-                ] +
-
-                # httpdns ip_cidr
-                [
-                  $http.rules[]?
-                  | select(.ip_cidr != null and .ip_cidr != [])
-                  | { ip_cidr }
-                ]
-              )
-            }
-          ' \
-          AWAvenue-Ads-Rule-Singbox.json \
-          httpdns.json \
-          > merged_rules.json
-
-      # 编译合并后的规则
-      - name: Compile merged rules to srs
-        run: |
           ./sing-box rule-set compile \
-            --output AWAvenue-Ads-Rule-Singbox.srs \
-            merged_rules.json
-      # 生成 cnip v4/v6 nft
+            --output httpdns.srs \
+            httpdns.json
+
+      # Generate CNIP IPv4/IPv6 nft sets
       - name: Generate cnip v4/v6 nft
         run: |
-          # 下载 Loyalsoldier 中国 IP 地址列表
+          # Download Loyalsoldier China IP list
           wget -qO cn.txt \
             "https://github.com/Loyalsoldier/geoip/raw/refs/heads/release/text/cn.txt"
 
@@ -163,7 +102,7 @@ jobs:
             echo "}"
           } > cnip_v6.nft
 
-          # 显示生成结果
+          # Display generated results
           echo "===== cnip_v4.nft ====="
           head -n 10 cnip_v4.nft
           echo "..."
@@ -174,20 +113,15 @@ jobs:
           echo "..."
           echo "IPv6 entries: $(grep -cE '^[[:space:]]+[0-9a-fA-F]*:' cnip_v6.nft)"
 
-      # 提交更新
+      # Commit and push updates
       - name: Commit and push
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-          # 删除旧的 httpdns 拆分文件
-          git rm -f --ignore-unmatch \
-            httpdns_domain.srs \
-            httpdns_ip.srs
-
-          # 提交最新规则
           git add \
             AWAvenue-Ads-Rule-Singbox.srs \
+            httpdns.srs \
             cnip_v4.nft \
             cnip_v6.nft
 
@@ -195,6 +129,7 @@ jobs:
 
           git push
 
+      # Delete old workflow runs
       - name: 删除工作流程运行
         uses: Mattraks/delete-workflow-runs@main
         with:

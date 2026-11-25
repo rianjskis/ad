@@ -117,7 +117,6 @@ jobs:
           git add \
             AWAvenue-Ads-Rule-Singbox.srs \
             httpdns.srs \
-            httpdns_ip.srs \
             cnip_v4.nft \
             cnip_v6.nft
 
